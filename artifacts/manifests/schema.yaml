@@ -1,0 +1,80 @@
+schema_version: 1
+
+document:
+  id: cbf_rover_model_manifest
+  purpose: external_model_identity_and_provenance
+
+top_level:
+  required:
+    - schema_version
+    - artifact_set
+    - slots
+
+artifact_set:
+  required:
+    - id
+    - status
+    - claim_level
+    - storage_root_from_environment
+    - repository_contains_weights
+  status_values:
+    - missing
+    - incomplete
+    - ready
+
+slot:
+  required:
+    - id
+    - role
+    - required
+    - status
+    - uri
+    - sha256
+    - bytes
+    - provenance
+    - compatibility
+  status_values:
+    - missing
+    - staged
+    - verified
+    - rejected
+  uri_rules:
+    scheme: artifact
+    syntax: "artifact://<relative-path-under-CBF_ROVER_ARTIFACT_ROOT>"
+    repository_relative_paths_allowed: false
+    absolute_paths_allowed: false
+    null_when_status_missing: true
+  integrity:
+    sha256_format: "64 lowercase hexadecimal characters"
+    bytes_type: non_negative_integer
+    required_when_status:
+      - staged
+      - verified
+  provenance:
+    required_fields:
+      - source_type
+      - training_run_id
+      - source_revision
+      - created_at_utc
+      - dataset_manifest_uri
+    source_type_values:
+      - server_training
+      - trusted_external_injection
+      - none
+  compatibility:
+    required_fields:
+      - framework
+      - framework_version
+      - architecture
+      - loader
+      - input_contract
+      - output_contract
+
+activation:
+  required_slot_status: verified
+  require_sha256_verification: true
+  require_server_load_check: true
+  missing_behavior: fail_closed
+  note: >
+    Verified describes artifact identity and load compatibility only. It is not
+    evidence of control safety or a formal certificate.

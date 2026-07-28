@@ -1,0 +1,118 @@
+schema_version: 1
+
+artifact_set:
+  id: learned_rgbd_v1
+  status: incomplete
+  claim_level: empirical
+  storage_root_from_environment: CBF_ROVER_ARTIFACT_ROOT
+  repository_contains_weights: false
+  note: >
+    All inherited checkpoints were removed during the clean architecture
+    rebuild. Populate these slots only after server retraining or trusted
+    external injection and verification.
+
+slots:
+  - id: reference_policy
+    role: reference_policy
+    required: true
+    status: missing
+    uri: null
+    sha256: null
+    bytes: null
+    provenance:
+      source_type: none
+      training_run_id: null
+      source_revision: null
+      created_at_utc: null
+      dataset_manifest_uri: null
+    compatibility:
+      framework: null
+      framework_version: null
+      architecture: null
+      loader: null
+      input_contract: null
+      output_contract: null
+
+  - id: rgbd_vae
+    role: perception_encoder
+    required: true
+    status: missing
+    uri: null
+    sha256: null
+    bytes: null
+    provenance:
+      source_type: none
+      training_run_id: null
+      source_revision: null
+      created_at_utc: null
+      dataset_manifest_uri: null
+    compatibility:
+      framework: null
+      framework_version: null
+      architecture: null
+      loader: null
+      input_contract: null
+      output_contract: null
+
+  - id: rgbd_mdrnn
+    role: latent_world_model
+    required: true
+    status: missing
+    uri: null
+    sha256: null
+    bytes: null
+    provenance:
+      source_type: none
+      training_run_id: null
+      source_revision: null
+      created_at_utc: null
+      dataset_manifest_uri: null
+    compatibility:
+      framework: null
+      framework_version: null
+      architecture: null
+      loader: null
+      input_contract: null
+      output_contract: null
+
+  - id: learned_cbf
+    role: learned_cbf_like_score
+    required: true
+    status: missing
+    uri: null
+    sha256: null
+    bytes: null
+    provenance:
+      source_type: none
+      training_run_id: null
+      source_revision: null
+      created_at_utc: null
+      dataset_manifest_uri: null
+    compatibility:
+      framework: null
+      framework_version: null
+      architecture: null
+      loader: null
+      input_contract: null
+      output_contract: null
+
+  - id: learned_clf
+    role: learned_clf_like_score
+    required: true
+    status: missing
+    uri: null
+    sha256: null
+    bytes: null
+    provenance:
+      source_type: none
+      training_run_id: null
+      source_revision: null
+      created_at_utc: null
+      dataset_manifest_uri: null
+    compatibility:
+      framework: null
+      framework_version: null
+      architecture: null
+      loader: null
+      input_contract: null
+      output_contract: null

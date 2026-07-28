@@ -1,0 +1,28 @@
+schema_version: 1
+
+policy:
+  id: depth_ppo
+  display_name: Depth PPO reference policy
+  family: learned_reference_policy
+  claim_level: empirical
+
+availability:
+  enabled: false
+  blocked_by: missing_artifact
+  artifact_manifest: artifacts/manifests/models.yaml
+  required_slot: reference_policy
+
+observation:
+  source: depth
+  normalization: declared_by_training_run
+
+action:
+  dimensions: 2
+  lower_bound: 0.0
+  upper_bound: 1.0
+  deterministic_in_evaluation: true
+
+compatibility:
+  architecture: must_be_declared_in_artifact_manifest
+  framework: must_be_declared_in_artifact_manifest
+  checkpoint_loader: must_be_declared_in_artifact_manifest

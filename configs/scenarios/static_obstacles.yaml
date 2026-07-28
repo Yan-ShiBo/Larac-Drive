@@ -1,0 +1,47 @@
+schema_version: 1
+
+scenario_suite:
+  id: static_obstacles_v1
+  display_name: Static obstacle avoidance
+  simulator: gazebo_classic
+  world_id: static_obstacles
+  layout_source: simulation_package
+
+episodes:
+  seeds:
+    - 11
+    - 23
+    - 47
+    - 89
+    - 131
+  episodes_per_seed: 20
+  max_steps: 2000
+  reset_world_before_each_episode: true
+  reset_method_state_before_each_episode: true
+  stop_on:
+    - success
+    - collision
+    - timeout
+    - runtime_error
+
+pairing:
+  reuse_world_layout: true
+  reuse_initial_pose: true
+  reuse_seed: true
+  compare:
+    - reference_policy
+    - learned_rgbd_filter
+
+observations:
+  rgb_topic: /camera/color/image_raw
+  depth_topic: /camera/depth/image_raw
+  odometry_topic: /odom
+  collision_topic: /collision
+  command_topic: /cmd_vel
+
+acceptance_boundary:
+  minimum_obstacle_distance_m: null
+  success_definition: must_be_supplied_by_scenario_implementation
+  note: >
+    Null or descriptive values are intentionally not safety guarantees. Concrete
+    thresholds must be versioned before a server experiment is accepted.

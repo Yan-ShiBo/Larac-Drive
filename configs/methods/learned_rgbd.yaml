@@ -1,0 +1,70 @@
+schema_version: 1
+
+method:
+  id: learned_rgbd
+  display_name: Learned RGB-D safety filter
+  family: learned_observation_safety_filter
+  claim_level: empirical
+  formal_certificate: false
+  description: >
+    An inherited research baseline that predicts latent dynamics and adjusts a
+    reference action using learned CBF-like and CLF-like scores. Its outputs are
+    diagnostics learned from data, not a formal safety certificate.
+
+availability:
+  enabled: false
+  blocked_by: missing_artifacts
+  artifact_manifest: artifacts/manifests/models.yaml
+  required_slots:
+    - rgbd_vae
+    - rgbd_mdrnn
+    - learned_cbf
+    - learned_clf
+
+observation:
+  rgb:
+    color_order: bgr
+    width_px: 128
+    height_px: 128
+  depth:
+    min_m: 0.05
+    max_m: 2.0
+  latent_dim: 64
+
+action:
+  dimensions: 2
+  lower_bound: 0.0
+  upper_bound: 1.0
+
+world_model:
+  recurrent_hidden_dim: 256
+  gaussian_components: 5
+  prediction: mixture_mean
+  reset_hidden_state_on_episode: true
+
+scores:
+  cbf_like:
+    safe_direction: lower
+    safe_below: -0.05
+    danger_at_or_above: 0.0
+    recovery_target: -0.02
+  clf_like:
+    interpretation: inherited_learned_score
+
+filter:
+  optimizer: adam
+  optimization_steps: 10
+  learning_rate: 0.08
+  cbf_decay: 0.70
+  clf_decay: 0.95
+  safety_weight: 1.0
+  action_weight: 50.0
+  max_action_delta: 0.10
+
+reporting:
+  required_labels:
+    - empirical
+    - learned
+  forbidden_claims:
+    - formally_verified
+    - provably_safe

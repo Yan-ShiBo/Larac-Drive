@@ -1,0 +1,36 @@
+schema_version: 1
+
+runtime:
+  id: server_ros2_gazebo
+  execution_scope: server_only
+  local_execution_supported: false
+  ros_distribution: humble
+  simulator: gazebo_classic
+  python: "3.10"
+
+external_storage:
+  artifacts:
+    backend: filesystem
+    root_from_environment: CBF_ROVER_ARTIFACT_ROOT
+    repository_paths_allowed: false
+    fail_if_unset: true
+  runs:
+    backend: filesystem
+    root_from_environment: CBF_ROVER_RUN_ROOT
+    repository_paths_allowed: false
+    fail_if_unset: true
+
+loading:
+  require_artifact_set_status: ready
+  require_slot_status: verified
+  verify_sha256: true
+  reject_absolute_uri_outside_artifact_root: true
+  allow_pickle_from_untrusted_source: false
+  fail_closed_on_missing_artifact: true
+
+execution:
+  device: cuda
+  deterministic_algorithms: false
+  publish_command: false
+  rate_hz: 10.0
+  capture_environment_manifest: true

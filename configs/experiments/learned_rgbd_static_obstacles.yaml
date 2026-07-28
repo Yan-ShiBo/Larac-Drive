@@ -1,0 +1,75 @@
+schema_version: 1
+
+experiment:
+  id: learned_rgbd_static_obstacles_v1
+  display_name: Learned RGB-D filter on static obstacles
+  status: blocked_missing_artifacts
+  enabled: false
+  purpose: paired_empirical_baseline
+
+configuration:
+  method: configs/methods/learned_rgbd.yaml
+  policy: configs/policies/depth_ppo.yaml
+  scenario: configs/scenarios/static_obstacles.yaml
+  runtime: configs/runtime/server_ros2.yaml
+  artifacts: artifacts/manifests/models.yaml
+
+comparison:
+  baseline:
+    id: reference_policy
+    safety_filter: none
+  candidate:
+    id: learned_rgbd_filter
+    safety_filter: learned_rgbd
+  require_paired_seed_and_initial_state: true
+
+recording:
+  run_id_template: "{experiment_id}-{utc_timestamp}-{git_revision}"
+  write_config_snapshot: true
+  write_git_revision: true
+  write_environment_manifest: true
+  write_artifact_manifest_snapshot: true
+  write_stdout_stderr: true
+  per_step_trace:
+    enabled: true
+    format: parquet
+    fields:
+      - episode_id
+      - seed
+      - step
+      - timestamp
+      - observation_id
+      - reference_action
+      - final_action
+      - intervention_norm
+      - cbf_like_score
+      - clf_like_score
+      - certificate_violation
+      - obstacle_distance_m
+      - reward
+      - cost
+      - collision
+  per_episode_summary:
+    format: jsonl
+    fields:
+      - episode_id
+      - seed
+      - termination_reason
+      - steps
+      - success
+      - collision_count
+      - minimum_obstacle_distance_m
+      - total_reward
+      - total_cost
+      - intervention_count
+      - intervention_rate
+      - mean_intervention_norm
+      - maximum_intervention_norm
+      - certificate_violation_count
+      - infeasible_filter_count
+
+reproducibility:
+  seed_source: configs/scenarios/static_obstacles.yaml
+  preserve_raw_traces: true
+  overwrite_existing_run: false
+  resume_partial_run: false

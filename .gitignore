@@ -1,0 +1,39 @@
+# Operating-system and editor files
+.DS_Store
+Thumbs.db
+Desktop.ini
+*.swp
+*.swo
+*~
+
+# Python
+**/__pycache__/
+*.py[cod]
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+.coverage
+htmlcov/
+.venv/
+venv/
+
+# ROS2 / colcon
+/simulation/ros2_ws/build/
+/simulation/ros2_ws/install/
+/simulation/ros2_ws/log/
+
+# External datasets, model artifacts, and experiment outputs
+/data/
+/runs/
+/checkpoints/
+/artifacts/models/
+*.bag
+*.db3
+*.log
+
+# Local scratch and import staging
+/.scratch/
+/.handover-import-tmp/
+
+# Immutable handover archives. Integrity metadata lives under docs/provenance/.
+/接手的原始文件/
