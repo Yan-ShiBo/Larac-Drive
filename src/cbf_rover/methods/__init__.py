@@ -1,7 +1,7 @@
-"""Vertical method packages.
+"""Research methods, nominal controllers and optional empirical baselines.
 
-Each method owns its models, preprocessing, filtering and training code so a
-method can evolve without cross-importing deprecated horizontal modules.
+Primary certificate methods live directly under this namespace. Inherited
+learned approaches are isolated under :mod:`cbf_rover.methods.baselines`.
 """
 
 __all__: list[str] = []

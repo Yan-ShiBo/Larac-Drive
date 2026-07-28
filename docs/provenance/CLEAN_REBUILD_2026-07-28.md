@@ -1,5 +1,9 @@
 # 2026-07-28 清洁重构记录
 
+> 历史快照：本文记录 math-first 整体重构之前的清洁架构，其中旧目录名只用于
+> 说明当时状态。当前架构与路径见
+> [`MATH_FIRST_REBUILD_2026-07-28.md`](MATH_FIRST_REBUILD_2026-07-28.md)。
+
 ## 决策与边界
 
 本轮按用户明确确认执行“重新设计全部架构并删除旧代码、旧结果、继承权重和
@@ -92,7 +96,7 @@ manifest 构造 checkpoint set。文件必须位于 `CBF_ROVER_ARTIFACT_ROOT` �
 执行骨架；depth camera、bumper 插件、topic/message 和完整实验流水线必须按
 [服务器验证门禁](../experiments/SERVER_VALIDATION.md) 在目标服务器验证。
 
-## Git 终态
+## 该阶段当时的 Git 状态
 
 旧 Git/LFS 已移除，随后初始化空的 `main` 仓库。新仓库没有 commit、暂存、
 remote 或 local LFS filter；模型二进制由 `.gitignore` 和外部 artifact 规则

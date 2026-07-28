@@ -1,24 +1,27 @@
-"""Simulation-first obstacle-certificate research package.
+"""Obstacle-certificate research package.
 
-The stable, dependency-light contracts live in :mod:`cbf_rover.core`.
-Concrete algorithms are grouped vertically under :mod:`cbf_rover.methods`;
-ROS and simulator adapters deliberately live outside this Python package.
+Dependency-light types live in :mod:`cbf_rover.domain`; use cases live in
+:mod:`cbf_rover.application`; infrastructure integrations live in
+:mod:`cbf_rover.adapters`; concrete research methods live in
+:mod:`cbf_rover.methods`.
 """
 
-from .core import (
+from .domain import (
+    ActionModificationResult,
+    ActionModifier,
     CertificateEvaluation,
     ClaimKind,
-    FilterResult,
+    Controller,
     SafetyClaim,
-    SafetyFilter,
 )
 
 __all__ = [
+    "ActionModificationResult",
+    "ActionModifier",
     "CertificateEvaluation",
     "ClaimKind",
-    "FilterResult",
+    "Controller",
     "SafetyClaim",
-    "SafetyFilter",
 ]
 
 __version__ = "0.2.0"

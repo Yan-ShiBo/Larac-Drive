@@ -2,25 +2,32 @@ schema_version: 1
 
 experiment:
   id: learned_rgbd_static_obstacles_v1
-  display_name: Learned RGB-D filter on static obstacles
-  status: blocked_missing_artifacts
+  display_name: Learned RGB-D action modifier on static obstacles
+  status: design_spec_incomplete
   enabled: false
   purpose: paired_empirical_baseline
+  blockers:
+    - model_artifacts_missing
+    - reference_controller_not_implemented
+    - observation_and_action_adapters_not_implemented
+    - scenario_spec_resolver_not_implemented
+    - experiment_orchestrator_not_implemented
+    - server_validation_not_run
 
 configuration:
-  method: configs/methods/learned_rgbd.yaml
-  policy: configs/policies/depth_ppo.yaml
+  method: configs/baselines/learned_rgbd/method.yaml
+  controller: configs/baselines/learned_rgbd/reference_controller.yaml
   scenario: configs/scenarios/static_obstacles.yaml
-  runtime: configs/runtime/server_ros2.yaml
-  artifacts: artifacts/manifests/models.yaml
+  runtime: configs/runtimes/server_ros2.yaml
+  artifacts: artifacts/models/manifest.yaml
 
 comparison:
   baseline:
     id: reference_policy
-    safety_filter: none
+    action_modifier: none
   candidate:
-    id: learned_rgbd_filter
-    safety_filter: learned_rgbd
+    id: learned_rgbd_modifier
+    action_modifier: learned_rgbd
   require_paired_seed_and_initial_state: true
 
 recording:
@@ -66,7 +73,7 @@ recording:
       - mean_intervention_norm
       - maximum_intervention_norm
       - certificate_violation_count
-      - infeasible_filter_count
+      - infeasible_modifier_count
 
 reproducibility:
   seed_source: configs/scenarios/static_obstacles.yaml

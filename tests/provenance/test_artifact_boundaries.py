@@ -6,7 +6,7 @@ from pathlib import Path
 
 REPOSITORY_ROOT = Path(__file__).resolve().parents[2]
 ORIGINAL_ARCHIVE_ROOT = REPOSITORY_ROOT / "接手的原始文件"
-MODEL_MANIFEST = REPOSITORY_ROOT / "artifacts" / "manifests" / "models.yaml"
+MODEL_MANIFEST = REPOSITORY_ROOT / "artifacts" / "models" / "manifest.yaml"
 MODEL_WEIGHT_SUFFIXES = (
     ".pt",
     ".pth",

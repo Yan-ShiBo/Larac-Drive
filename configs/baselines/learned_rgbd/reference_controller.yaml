@@ -1,0 +1,37 @@
+schema_version: 1
+
+controller:
+  id: depth_ppo
+  display_name: Depth PPO reference controller
+  family: learned_reference_controller
+  role: optional_baseline_controller
+  implementation: null
+  claim_level: empirical
+
+availability:
+  enabled: false
+  status: design_spec_incomplete
+  blockers:
+    - reference_controller_loader_not_implemented
+    - reference_policy_artifact_missing
+    - observation_adapter_not_implemented
+    - normalized_action_codec_not_implemented
+    - server_validation_not_run
+  artifact_manifest: artifacts/models/manifest.yaml
+  required_slot: reference_policy
+
+observation:
+  source: depth
+  normalization: must_be_declared_by_training_run
+
+action:
+  dimensions: 2
+  lower_bound: 0.0
+  upper_bound: 1.0
+  deterministic_in_evaluation: true
+  gazebo_codec: not_implemented
+
+compatibility:
+  architecture: must_be_declared_in_artifact_manifest
+  framework: must_be_declared_in_artifact_manifest
+  checkpoint_loader: must_be_declared_in_artifact_manifest

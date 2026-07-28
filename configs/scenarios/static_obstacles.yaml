@@ -1,47 +1,140 @@
-schema_version: 1
+schema_version: 2
+kind: scenario_spec
 
-scenario_suite:
+scenario:
   id: static_obstacles_v1
   display_name: Static obstacle avoidance
-  simulator: gazebo_classic
-  world_id: static_obstacles
-  layout_source: simulation_package
+  status: design_spec_unvalidated
+  description: >
+    A deterministic planar scenario shared by the exact simulator, Gazebo
+    projection, RViz markers, collision checks, and experiment metrics.
+
+authority:
+  source_of_truth: configs/scenarios/static_obstacles.yaml
+  consumers:
+    - exact_simulator
+    - gazebo_world_and_spawner
+    - rviz_markers
+    - distance_and_collision_metrics
+    - experiment_runner
+  hard_coded_geometry_outside_spec_allowed: false
+
+frame:
+  id: world
+  convention: right_handed
+  planar_axes:
+    x: forward
+    y: left
+  units:
+    position: m
+    angle: rad
+    time: s
+
+domain:
+  id: planar_workspace
+  geometry:
+    type: axis_aligned_box_2d
+    x_bounds_m: [-1.0, 4.0]
+    y_bounds_m: [-2.0, 2.0]
+
+robot:
+  entity_id: cbf_rover
+  initial_pose:
+    frame_id: world
+    x_m: 0.0
+    y_m: 0.0
+    z_m: 0.0
+    yaw_rad: 0.0
+  footprint:
+    type: circle
+    radius_m: 0.31
+    derivation: conservative_circumscribed_radius_of_description
+  safety_inflation_m: 0.05
+
+sets:
+  initial:
+    - id: initial_disk
+      geometry:
+        type: disk_2d
+        center_m: [0.0, 0.0]
+        radius_m: 0.10
+  goal:
+    - id: goal_disk
+      geometry:
+        type: disk_2d
+        center_m: [3.5, 0.0]
+        radius_m: 0.25
+  unsafe:
+    - id: unsafe_box_1
+      geometry:
+        type: box_2d_inflated_by_circle
+        obstacle_ref: box_1
+        inflation_radius_m: 0.36
+    - id: unsafe_box_2
+      geometry:
+        type: box_2d_inflated_by_circle
+        obstacle_ref: box_2
+        inflation_radius_m: 0.36
+    - id: unsafe_box_3
+      geometry:
+        type: box_2d_inflated_by_circle
+        obstacle_ref: box_3
+        inflation_radius_m: 0.36
+
+obstacles:
+  - id: box_1
+    geometry:
+      type: box_3d
+      center_m: [1.5, 0.0, 0.40]
+      size_m: [0.35, 0.35, 0.80]
+  - id: box_2
+    geometry:
+      type: box_3d
+      center_m: [2.5, 0.8, 0.50]
+      size_m: [0.45, 0.45, 1.00]
+  - id: box_3
+    geometry:
+      type: box_3d
+      center_m: [2.5, -0.8, 0.50]
+      size_m: [0.45, 0.45, 1.00]
+
+backends:
+  exact:
+    enabled_by_spec: true
+    model_binding: must_be_selected_by_experiment
+  gazebo:
+    enabled_by_spec: true
+    world_name: cbf_rover_world
+    world_resource: cbf_rover_sim/worlds/base.world
 
 episodes:
-  seeds:
-    - 11
-    - 23
-    - 47
-    - 89
-    - 131
+  seeds: [11, 23, 47, 89, 131]
   episodes_per_seed: 20
   max_steps: 2000
   reset_world_before_each_episode: true
   reset_method_state_before_each_episode: true
   stop_on:
-    - success
+    - goal_reached
+    - unsafe_set_entered
     - collision
     - timeout
     - runtime_error
 
-pairing:
-  reuse_world_layout: true
-  reuse_initial_pose: true
-  reuse_seed: true
-  compare:
-    - reference_policy
-    - learned_rgbd_filter
-
-observations:
-  rgb_topic: /camera/color/image_raw
-  depth_topic: /camera/depth/image_raw
-  odometry_topic: /odom
-  collision_topic: /collision
-  command_topic: /cmd_vel
+topics:
+  clock: /clock
+  odometry: /odom
+  collision: /collision
+  command_request: /reference_command
+  command_external: /external_command
+  command_actuator: /cmd_vel
+  rgb: /camera/color/image_raw
+  depth: /camera/depth/image_raw
+  certificate_telemetry: /cbf_rover/certificate_telemetry
 
 acceptance_boundary:
-  minimum_obstacle_distance_m: null
-  success_definition: must_be_supplied_by_scenario_implementation
+  scenario_geometry_is_validated: false
+  research_contract_confirmed: false
   note: >
-    Null or descriptive values are intentionally not safety guarantees. Concrete
-    thresholds must be versioned before a server experiment is accepted.
+    The geometry and sets are an explicit design specification, not a proof.
+    Formal claim eligibility requires a confirmed research contract and a
+    compatible independently validated certificate artifact.

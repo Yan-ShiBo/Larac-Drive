@@ -26,7 +26,13 @@ venv/
 /data/
 /runs/
 /checkpoints/
-/artifacts/models/
+/artifacts/payloads/
+*.pt
+*.pth
+*.tar
+*.ckpt
+*.onnx
+*.safetensors
 *.bag
 *.db3
 *.log

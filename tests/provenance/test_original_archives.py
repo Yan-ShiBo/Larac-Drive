@@ -3,9 +3,12 @@ from __future__ import annotations
 import hashlib
 from pathlib import Path
 
+import pytest
+
 
 REPOSITORY_ROOT = Path(__file__).resolve().parents[2]
 ORIGINAL_ARCHIVE_ROOT = REPOSITORY_ROOT / "接手的原始文件"
+pytestmark = pytest.mark.requires_original_archives
 EXPECTED_ARCHIVES = {
     "rgbd_safe_method.7z": (
         "AB2F0A0ECEB97D78CB825E04ADEAC2BEB64D27CD3F53A937FF4475708E3893B0"

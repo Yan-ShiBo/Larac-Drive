@@ -1,6 +1,5 @@
 from __future__ import annotations
 
-import re
 from pathlib import Path
 
 
@@ -22,21 +21,31 @@ TEXT_SUFFIXES = {
     ".yaml",
     ".yml",
 }
-OLD_ROS_NAMES = {
+DEPRECATED_PYTHON_PATHS = {
+    "cbf_rover.certificates",
+    "cbf_rover.cli",
+    "cbf_rover.core",
+    "cbf_rover.data",
+    "cbf_rover.datasets",
+    "cbf_rover.evaluation",
+    "cbf_rover.experiments",
+    "cbf_rover.methods.learned_rgbd",
+    "cbf_rover.perception",
+    "cbf_rover.policies",
+    "cbf_rover.safety_filters",
+    "cbf_rover.simulation",
+    "cbf_rover.training",
+    "cbf_rover.world_models",
+}
+DEPRECATED_ROS_NAMES = {
     "bringup_pkg",
+    "cbf_rover_gazebo",
+    "cbf_rover_ros",
     "gazebo_robot",
     "robot_model",
-    "ros2_humble_ws",
     "rover_hardware",
     "yzh_gazebo_sim",
-    "yzh_ground",
 }
-OLD_PYTHON_IMPORT = re.compile(
-    r"\bcbf_rover\.(?:"
-    r"certificates|data|evaluation|perception|safety_filters|simulation|training|"
-    r"world_models"
-    r")(?=\.|\b)"
-)
 
 
 def _source_text_files() -> list[Path]:
@@ -51,19 +60,15 @@ def _source_text_files() -> list[Path]:
     return sorted(files)
 
 
-def test_source_and_simulation_do_not_hardcode_inherited_package_names() -> None:
+def test_source_and_simulation_do_not_reference_deprecated_module_or_ros_paths() -> None:
     violations: list[str] = []
+    forbidden = DEPRECATED_PYTHON_PATHS | DEPRECATED_ROS_NAMES
     for path in _source_text_files():
-        text = path.read_text(encoding="utf-8")
-        folded = text.casefold()
-        for old_name in OLD_ROS_NAMES:
-            if old_name in folded:
+        text = path.read_text(encoding="utf-8").casefold()
+        for old_path in forbidden:
+            if old_path in text:
                 violations.append(
-                    f"{path.relative_to(REPOSITORY_ROOT)} contains {old_name!r}"
+                    f"{path.relative_to(REPOSITORY_ROOT)} contains {old_path!r}"
                 )
-        if match := OLD_PYTHON_IMPORT.search(text):
-            violations.append(
-                f"{path.relative_to(REPOSITORY_ROOT)} contains {match.group(0)!r}"
-            )
 
     assert violations == []

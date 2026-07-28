@@ -1,0 +1,6 @@
+<?xml version="1.0"?>
+<robot name="cbf_rover" xmlns:xacro="http://www.ros.org/wiki/xacro">
+  <xacro:include filename="$(find cbf_rover_description)/urdf/cbf_rover.urdf.xacro"/>
+  <xacro:include filename="$(find cbf_rover_sim)/xacro/gazebo_plugins.xacro"/>
+  <xacro:cbf_rover_sim_plugins/>
+</robot>

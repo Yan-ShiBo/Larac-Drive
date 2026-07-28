@@ -1,0 +1,144 @@
+schema_version: 1
+
+document:
+  id: cbf_rover_certificate_artifact
+  purpose: certificate_identity_compatibility_validation_and_claim_eligibility
+  note: >
+    Conformance to this schema is necessary but not sufficient for a safety
+    claim. No certificate artifact currently exists in this repository.
+
+top_level:
+  required:
+    - schema_version
+    - artifact
+    - compatibility
+    - state_schema
+    - representation
+    - solver
+    - independent_validation
+    - assumptions
+    - claim_eligibility
+    - integrity
+
+artifact:
+  required:
+    - id
+    - certificate_family
+    - theorem_id
+    - created_at_utc
+    - generator_revision
+    - status
+  status_values:
+    - draft
+    - candidate
+    - validated
+    - rejected
+
+compatibility:
+  required:
+    - system
+    - controller
+    - scenario
+    - noise
+  binding:
+    required_fields:
+      - id
+      - sha256
+    sha256_format: "64 lowercase hexadecimal characters"
+  rule: all_four_bindings_must_match_runtime_snapshots_exactly
+
+state_schema:
+  required:
+    - frame_id
+    - order
+    - units
+    - domain
+    - sample_period_s
+  rules:
+    order_and_units_have_equal_length: true
+    units_are_explicit: true
+    implicit_coordinate_conversion_allowed: false
+
+representation:
+  required:
+    - type
+    - variables
+    - basis
+    - coefficient_storage
+  type_values:
+    - polynomial
+    - piecewise_polynomial
+    - symbolic_expression
+    - other_declared
+  coefficient_storage:
+    allowed_forms:
+      - inline_coefficients
+      - external_uri_with_sha256_and_bytes
+    variable_order_required: true
+    numeric_dtype_required: true
+
+solver:
+  required:
+    - name
+    - version
+    - backend
+    - status
+    - termination_reason
+    - tolerances
+    - evidence_uri
+  status_values:
+    - success
+    - infeasible
+    - numerical_failure
+    - interrupted
+    - unknown
+  note: solver_success_alone_does_not_establish_claim_eligibility
+
+independent_validation:
+  required:
+    - status
+    - validator
+    - validator_revision
+    - validated_at_utc
+    - checks
+    - evidence_uri
+  status_values:
+    - not_run
+    - passed
+    - failed
+  independence_requirement: validation_must_not_reuse_unchecked_generator_results
+
+assumptions:
+  required:
+    - dynamics
+    - controller
+    - disturbance_or_noise
+    - sets
+    - numerical
+    - applicability
+    - known_failure_conditions
+  empty_or_implicit_assumptions_allowed: false
+
+claim_eligibility:
+  required:
+    - requested_level
+    - eligible
+    - reasons
+  level_values:
+    - formal
+    - bounded_model_error
+    - empirical
+    - diagnostic
+  rules:
+    compatibility_hashes_match: required
+    solver_status_success: required_for_formal_or_bounded_model_error
+    independent_validation_passed: required_for_formal_or_bounded_model_error
+    all_assumptions_satisfied: required
+    eligibility_is_derived_not_manually_asserted: true
+
+integrity:
+  required:
+    - artifact_sha256
+    - bytes
+  sha256_format: "64 lowercase hexadecimal characters"
+  bytes_type: non_negative_integer

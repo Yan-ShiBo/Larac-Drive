@@ -1,8 +1,12 @@
 # Predictable text behavior across Windows development and Linux servers.
+.gitattributes text eol=lf
+.gitignore text eol=lf
 *.py text eol=lf
 *.md text eol=lf
 *.txt text eol=lf
 *.toml text eol=lf
+*.cfg text eol=lf
+*.config text eol=lf
 *.csv text eol=lf
 *.json text eol=lf
 *.xml text eol=lf
@@ -28,3 +32,4 @@
 *.jpeg -text
 *.dae text eol=lf
 *.docx -text
+simulation/ros2_ws/src/*/resource/* text eol=lf
