@@ -22,7 +22,7 @@ venv/
 /simulation/ros2_ws/install/
 /simulation/ros2_ws/log/
 
-# External datasets, model artifacts, and experiment outputs
+# Project-local, untracked datasets, model payloads, and experiment outputs
 /data/
 /runs/
 /checkpoints/

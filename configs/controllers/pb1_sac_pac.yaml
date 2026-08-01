@@ -1,0 +1,77 @@
+schema_version: 1
+kind: controller_construction_spec
+id: K2_T2_V1_PB1_PA1_PS1_CV1
+
+reference_training:
+  id: ST1_SAC_600K_SYMMETRIC_GLOBAL_V1
+  algorithm: SAC
+  training_seeds: [11, 23, 47, 89, 131]
+  total_timesteps_per_seed: 600000
+  route_bias: null
+  reset_distribution:
+    initial_disk_probability: 0.30
+    uniform_Psi_probability: 0.70
+  action_codec:
+    id: ST1_CONCENTRIC_SQUARE_TO_DISK_042
+    reference_radius_mps: 0.42
+  network: [256, 256]
+  learning_rate: 0.0003
+  buffer_size: 1000000
+  learning_starts: 10000
+  batch_size: 256
+  gamma: 0.99
+  tau: 0.005
+  entropy_coefficient: auto
+  claim_level: reference_only
+
+checkpoint_selection:
+  id: V1_SELECT_ONE_SAC_BEFORE_PAC
+  evaluation_seeds: [1009, 2027, 3037, 4051, 5059]
+  episodes_per_seed: 20
+  hard_gate:
+    unsafe_entry: 0
+    model_contract_breach: 0
+    action_contract_breach: 0
+  ordering:
+    - goal_rate_desc
+    - median_successful_steps_asc
+    - numeric_training_seed_asc
+
+polynomial:
+  normalization_ref: P1_ROVER_STATIC_OBSTACLES_AABB_V1
+  basis: explicit_total_degree_monomials
+  catalog_order: [total_degree_asc, x_exponent_asc]
+  axis_supports_are_independent: true
+  schedule:
+    - {stage: 1, max_degree: 3, max_terms_per_axis: 6}
+    - {stage: 2, max_degree: 3, max_terms_per_axis: 8}
+    - {stage: 3, max_degree: 4, max_terms_per_axis: 8}
+  escalation_beyond_schedule_allowed: false
+
+pac:
+  design_distribution: Uniform(Psi)
+  support_search_samples: 50000
+  support_selection_samples: 20000
+  beam_width: 32
+  epsilon_pac: 0.05
+  eta_total: 0.001
+  eta_stage: 0.0003333333333333333
+  refit_min_samples: 5000
+  e_star_max_mps: 0.05
+  sample_reuse_between_purposes_allowed: false
+
+global_validation:
+  id: CV1_BERNSTEIN_GLOBAL_AND_1000_ROLLOUTS
+  action_disk_margin_m2ps2: 0.000001
+  D1_margin_m: 0.000001
+  exact_float_bernstein_outward_rounding: true
+  formal_unknown: fail_closed
+  rollout_seeds: [3101, 3109, 3121, 3137, 3163, 3181, 3203, 3221, 3251, 3271]
+  episodes_per_seed: 100
+  minimum_goal_rate: 0.99
+  hard_failure_count: 0
+
+freeze:
+  happens_before_q_sbc: true
+  certificate_may_change_coefficients: false
+  runtime_mode: monitor_only

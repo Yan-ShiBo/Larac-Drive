@@ -27,15 +27,20 @@
 
 数学证书的字段和状态见
 [`artifacts/certificates/schema.yaml`](../../artifacts/certificates/schema.yaml)。
-当前没有现有证书，不能创建虚假的系数、求解成功状态或验证记录。
+仓库不提交运行生成的证书系数。2026-07-30 的远程服务器结果中已有一个
+独立验证的 G7 W14 q-SBC，状态为 `formal_valid_not_ready`；其文件、内容和
+独立验证哈希记录在
+[`EXACT_LIVE_CERTIFICATE_RUN_2026-07-30.md`](../experiments/EXACT_LIVE_CERTIFICATE_RUN_2026-07-30.md)。
+不得把失败的 G5/G6/G8 候选或 sampled 诊断伪装成证书。
 
-未来证书必须绑定 system、controller、scenario 和 noise 的内容哈希，记录状态
+证书必须绑定 system、controller、scenario 和 noise 的内容哈希，记录状态
 顺序/单位、表示、solver、独立验证、假设和声明资格。
 
 ## Learned models
 
 [`artifacts/models/manifest.yaml`](../../artifacts/models/manifest.yaml) 只声明五个
-`missing` 槽位。外部权重必须由 `CBF_ROVER_ARTIFACT_ROOT` 注入，并登记
+`missing` 槽位。权重必须放在项目内 `artifacts/payloads/`，由
+`CBF_ROVER_ARTIFACT_ROOT` 注入，并登记
 SHA-256、字节数、来源和加载兼容性。
 
 模型 `verified` 不证明控制安全，也不会把 learned score 变成 formal
@@ -44,7 +49,7 @@ certificate。
 ## 数据与运行结果
 
 训练数据需要独立 dataset manifest，记录来源、处理步骤、字段、单位、划分规则和
-哈希。实验结果写入仓库外 `CBF_ROVER_RUN_ROOT`，使用不可覆盖 run ID。
+哈希。实验结果写入项目内 `runs/`（`CBF_ROVER_RUN_ROOT`），使用不可覆盖 run ID。
 
 图表和聚合表必须能追溯到 trace、episode summary、完整配置、Git revision、
 环境和 artifact 快照。无法追溯的数字不能作为正式实验结果。

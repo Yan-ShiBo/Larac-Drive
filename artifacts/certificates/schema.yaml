@@ -1,144 +1,175 @@
-schema_version: 1
+schema_document_version: 4
+kind: q_sbc_certificate_schema_union
+implementation: cbf_rover.methods.polynomial_sbc.certificate.QSBCertificate
+supported_certificate_schema_versions: [1, 2, 3]
 
-document:
-  id: cbf_rover_certificate_artifact
-  purpose: certificate_identity_compatibility_validation_and_claim_eligibility
-  note: >
-    Conformance to this schema is necessary but not sufficient for a safety
-    claim. No certificate artifact currently exists in this repository.
+required_common:
+  - schema_version
+  - kind
+  - certificate_id
+  - theorem_id
+  - barrier
+  - q
+  - q_float64_hex
+  - epsbar
+  - epsbar_float64_hex
+  - controller_content_sha256
+  - theorem_conclusion
+  - solver
+  - validation
+  - content_sha256
 
-top_level:
-  required:
-    - schema_version
-    - artifact
-    - compatibility
-    - state_schema
-    - representation
-    - solver
-    - independent_validation
-    - assumptions
-    - claim_eligibility
-    - integrity
+fixed_semantics:
+  theorem_id: G4_QSBC_INFINITE_HORIZON_REACH_AVOID_V1
+  state_order: [x_m, y_m]
+  normalized_variable_order: [xi_x, xi_y]
+  horizon: infinite
+  q_meaning: P_hit_Xu_before_Xg_upper_bound_for_all_x0_in_X0
+  epsbar_meaning: strict_expected_barrier_decrease
+  max_steps_2000_is_diagnostic_only: true
 
-artifact:
-  required:
-    - id
-    - certificate_family
-    - theorem_id
-    - created_at_utc
-    - generator_revision
-    - status
-  status_values:
-    - draft
-    - candidate
-    - validated
-    - rejected
+certificate_variants:
+  schema_1_global_sparse_legacy:
+    certificate_schema_version: 1
+    read_status: legacy_readable
+    barrier:
+      type: sparse_total_degree_polynomial
+      coefficient_identity: decimal_and_binary64_hex_must_agree
+    proof_witness_field_allowed: false
+    theorem_conclusion_bounds: legacy_binary64_fields
+
+  schema_2_global_sparse_active:
+    certificate_schema_version: 2
+    active_global_certificate_schema: true
+    barrier:
+      type: sparse_total_degree_polynomial
+      required:
+        - variable_order
+        - powers
+        - coefficients_decimal
+        - coefficients_float64_hex
+        - degree
+        - term_count
+      coefficient_identity: decimal_and_binary64_hex_must_agree
+    proof_witness_field_allowed: false
+    validation:
+      required_validator: G5_EXACT_RATIONAL_BERNSTEIN_REPLAY_V3
+      required_report_schema_version: 2
+      formal_acceptance_tolerance: 0.0
+      required_bindings:
+        - barrier_payload_sha256
+        - controller_content_sha256
+        - q_float64_hex
+        - epsbar_float64_hex
+        - proof_tree_file_sha256
+    theorem_conclusion_bounds:
+      exact_fraction_strings_required: true
+      probability_lower_bound_float_rounding: toward_negative_infinity
+      stopping_time_upper_bound_float_rounding: toward_positive_infinity
+
+  schema_3_p49_piecewise_candidate:
+    certificate_schema_version: 3
+    scope: G11P49_only
+    active_global_certificate_schema: false
+    published_ready_first_slice_certificate_present: false
+    additional_required:
+      - proof_witness
+    barrier:
+      type: p49_piecewise_tensor_bernstein_shared_control_net
+      partition_id: P49_C2_OBSTACLE_ALIGNED_CARTESIAN_V1
+      continuity: C0_by_shared_global_control_net
+      required:
+        - schema_version
+        - kind
+        - partition_id
+        - variable_order
+        - basis
+        - degree_per_axis
+        - normalized_x_breaks_exact
+        - normalized_y_breaks_exact
+        - global_control_grid_shape
+        - global_control_dof_count
+        - global_control_grid_decimal
+        - global_control_grid_float64_hex
+        - continuity
+      allowed_barrier_roof_degree_pairs: [[3, 4], [4, 6]]
+    frozen_scalars:
+      q_float64_hex: 0x1.9999999999999p-4
+      q_exact_binary64_maximum_inclusive: 1/10
+      epsbar_float64_hex: 0x1.0c6f7a0b5ed8dp-20
+      epsbar_exact_binary64_minimum_exclusive: 0
+    proof_witness:
+      kind: g11p49_piecewise_roof_witness_binding
+      proof_route_id: G11P49_C0_PIECEWISE_ROOF_SUFFICIENT_G4_V1
+      required_hash_bindings:
+        - barrier_payload_sha256
+        - roof_witness_content_sha256
+        - controller_content_sha256
+        - formal_model_contract_sha256
+        - geometry_catalog_sha256
+        - validation_report_content_sha256
+      required_degree_bindings: [barrier_degree, roof_degree]
+    validation:
+      required_validator: G5_EXACT_RATIONAL_PIECEWISE_ROOF_REPLAY_V3P_V1
+      required_report_schema_version: 1
+      required_status: validated
+      first_slice_ready: true
+      formal_acceptance_tolerance: 0.0
+      expected_counts:
+        p49_cells: 49
+        unsafe_cells: 12
+        safe_source_cells: 37
+        goal_boundary_safe_cells: 3
+        roofs: 148
+        roof_target_intersections: 1012
+        internal_conforming_edges: 84
+        formal_constraint_trees: 1126
+      required_gates:
+        - theorem_scalar_gate
+        - c0_gate
+        - p49_catalog_gate
+        - geometry_gate
+        - v3p_arithmetic_gate
+      all_constraint_names_and_tree_files_must_be_exact_and_unique: true
+      publication_rechecks_validation_witness_trees_and_pending_certificate: true
+      pending_then_atomic_final: true
+
+scalar_rules:
+  global_schema_1_2:
+    q_minimum_inclusive: 0.0
+    q_maximum_exclusive_for_formal_validity: 1.0
+    epsbar_minimum_exclusive: 0.0
+  p49_schema_3:
+    exact_binary64_q_maximum_inclusive: 1/10
+    exact_binary64_epsbar_minimum_exclusive: 0
 
 compatibility:
-  required:
-    - system
-    - controller
-    - scenario
-    - noise
-  binding:
-    required_fields:
-      - id
-      - sha256
-    sha256_format: "64 lowercase hexadecimal characters"
-  rule: all_four_bindings_must_match_runtime_snapshots_exactly
+  active_global_certificate_schema_version: 2
+  legacy_readable_certificate_schema_versions: [1]
+  p49_candidate_certificate_schema_version: 3
+  schema_3_support_does_not_imply_a_published_certificate: true
+  controller_hash_format: 64_lowercase_hex
+  controller_hash_must_match_runtime: true
+  supported_controller_kinds:
+    - frozen_polynomial_controller
+    - frozen_piecewise_polynomial_controller
+  piecewise_switch_boundaries_checked_on_both_closures: true
+  theorem_and_active_config_must_match: true
 
-state_schema:
-  required:
-    - frame_id
-    - order
-    - units
-    - domain
-    - sample_period_s
-  rules:
-    order_and_units_have_equal_length: true
-    units_are_explicit: true
-    implicit_coordinate_conversion_allowed: false
-
-representation:
-  required:
-    - type
-    - variables
-    - basis
-    - coefficient_storage
-  type_values:
-    - polynomial
-    - piecewise_polynomial
-    - symbolic_expression
-    - other_declared
-  coefficient_storage:
-    allowed_forms:
-      - inline_coefficients
-      - external_uri_with_sha256_and_bytes
-    variable_order_required: true
-    numeric_dtype_required: true
-
-solver:
-  required:
-    - name
-    - version
-    - backend
-    - status
-    - termination_reason
-    - tolerances
-    - evidence_uri
-  status_values:
-    - success
-    - infeasible
-    - numerical_failure
-    - interrupted
-    - unknown
-  note: solver_success_alone_does_not_establish_claim_eligibility
-
-independent_validation:
-  required:
-    - status
-    - validator
-    - validator_revision
-    - validated_at_utc
-    - checks
-    - evidence_uri
-  status_values:
-    - not_run
-    - passed
-    - failed
-  independence_requirement: validation_must_not_reuse_unchecked_generator_results
-
-assumptions:
-  required:
-    - dynamics
-    - controller
-    - disturbance_or_noise
-    - sets
-    - numerical
-    - applicability
-    - known_failure_conditions
-  empty_or_implicit_assumptions_allowed: false
-
-claim_eligibility:
-  required:
-    - requested_level
-    - eligible
-    - reasons
-  level_values:
-    - formal
-    - bounded_model_error
-    - empirical
-    - diagnostic
-  rules:
-    compatibility_hashes_match: required
-    solver_status_success: required_for_formal_or_bounded_model_error
-    independent_validation_passed: required_for_formal_or_bounded_model_error
-    all_assumptions_satisfied: required
-    eligibility_is_derived_not_manually_asserted: true
+validation_common:
+  solver_status_alone_is_sufficient: false
+  independent_validator_reads:
+    solver_status: false
+    LP_matrix: false
+    SOS_multipliers: false
+    Gram_matrices: false
+  unknown: fail_closed
 
 integrity:
-  required:
-    - artifact_sha256
-    - bytes
-  sha256_format: "64 lowercase hexadecimal characters"
-  bytes_type: non_negative_integer
+  canonical_json:
+    sort_keys: true
+    separators: [",", ":"]
+    allow_nan: false
+    encoding: UTF-8
+  content_sha256_covers_all_fields_except_itself: true
+  formal_artifacts_must_cross_bind_all_subject_hashes: true

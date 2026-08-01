@@ -1,0 +1,45 @@
+schema_version: 2
+kind: experiment_spec
+id: R1_ROVER_FIRST_QSBC_VERTICAL_SLICE_V2
+
+bindings:
+  scenario: ../scenarios/static_obstacles.yaml
+  system: ../systems/m1_stochastic_single_integrator.yaml
+  controller: ../controllers/c2_lower_piecewise.yaml
+  certificate: ../certificates/g4_qsbc.yaml
+
+execution:
+  allowed_host_role: server
+  local_python_execution_allowed: false
+  local_solver_execution_allowed: false
+  server_source_directory_policy: immutable_timestamped_snapshot
+  server_result_directory_policy: new_timestamped_directory
+
+stages:
+  - consume_frozen_DX1_failure_diagnostic
+  - construct_fixed_C2_lower_route_piecewise_controller
+  - independently_validate_controller_by_C2V1
+  - freeze_C2_controller
+  - solve_q_SBC_degree_schedule
+  - independently_validate_certificate
+  - publish_fixed_hash_bound_artifacts
+
+stop_conditions:
+  - DX1_identity_or_content_mismatch
+  - C2V1_unknown_or_violated
+  - q_SBC_schedule_not_ready
+
+predecessor:
+  id: R1_ROVER_FIRST_QSBC_VERTICAL_SLICE_V1
+  terminal_status: not_ready_at_PB1_PAC
+  reuse_of_failed_PB1_coefficients: false
+  retained_evidence:
+    - V1_seed_11_selection
+    - PB1_stage_1_2_3_failure_manifests
+    - DX1_structure_mismatch_diagnostic
+
+claim_separation:
+  formal: G4 theorem bound from independently validated artifact
+  empirical_exact: fixed-seed diagnostics only
+  empirical_gazebo: tracker experiment only
+  learned_RGBD: baseline_only

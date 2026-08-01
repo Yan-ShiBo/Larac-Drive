@@ -1,140 +1,89 @@
-schema_version: 2
+schema_version: 3
 kind: scenario_spec
 
 scenario:
-  id: static_obstacles_v1
-  display_name: Static obstacle avoidance
-  status: design_spec_unvalidated
-  description: >
-    A deterministic planar scenario shared by the exact simulator, Gazebo
-    projection, RViz markers, collision checks, and experiment metrics.
+  id: P1_ROVER_STATIC_OBSTACLES_AABB_V1
+  display_name: Rover static-obstacle reach-avoid
+  status: confirmed_contract
+  frame_id: world
+  units: SI
 
 authority:
   source_of_truth: configs/scenarios/static_obstacles.yaml
-  consumers:
-    - exact_simulator
-    - gazebo_world_and_spawner
-    - rviz_markers
-    - distance_and_collision_metrics
-    - experiment_runner
   hard_coded_geometry_outside_spec_allowed: false
-
-frame:
-  id: world
-  convention: right_handed
-  planar_axes:
-    x: forward
-    y: left
-  units:
-    position: m
-    angle: rad
-    time: s
+  original_handover_archives_are_inputs: false
 
 domain:
-  id: planar_workspace
-  geometry:
-    type: axis_aligned_box_2d
-    x_bounds_m: [-1.0, 4.0]
-    y_bounds_m: [-2.0, 2.0]
-
-robot:
-  entity_id: cbf_rover
-  initial_pose:
-    frame_id: world
-    x_m: 0.0
-    y_m: 0.0
-    z_m: 0.0
-    yaw_rad: 0.0
-  footprint:
-    type: circle
-    radius_m: 0.31
-    derivation: conservative_circumscribed_radius_of_description
-  safety_inflation_m: 0.05
+  id: D1_COMPACT_ROBUST_FORWARD_INVARIANT
+  type: closed_axis_aligned_box_2d
+  x_bounds_m: [-1.0, 4.0]
+  y_bounds_m: [-2.0, 2.0]
+  outside_successor: model_contract_breach
+  clipping_projection_or_wrap_allowed: false
 
 sets:
   initial:
-    - id: initial_disk
-      geometry:
-        type: disk_2d
-        center_m: [0.0, 0.0]
-        radius_m: 0.10
+    id: X0
+    type: closed_disk_2d
+    center_m: [0.0, 0.0]
+    radius_m: 0.10
   goal:
-    - id: goal_disk
-      geometry:
-        type: disk_2d
-        center_m: [3.5, 0.0]
-        radius_m: 0.25
+    id: Xg
+    type: closed_disk_2d
+    center_m: [3.5, 0.0]
+    radius_m: 0.25
   unsafe:
-    - id: unsafe_box_1
-      geometry:
-        type: box_2d_inflated_by_circle
-        obstacle_ref: box_1
-        inflation_radius_m: 0.36
-    - id: unsafe_box_2
-      geometry:
-        type: box_2d_inflated_by_circle
-        obstacle_ref: box_2
-        inflation_radius_m: 0.36
-    - id: unsafe_box_3
-      geometry:
-        type: box_2d_inflated_by_circle
-        obstacle_ref: box_3
-        inflation_radius_m: 0.36
+    union_semantics: closed_union
+    components:
+      - id: Xu1
+        type: closed_axis_aligned_box_2d
+        x_bounds_m: [0.965, 2.035]
+        y_bounds_m: [-0.535, 0.535]
+      - id: Xu2
+        type: closed_axis_aligned_box_2d
+        x_bounds_m: [1.915, 3.085]
+        y_bounds_m: [0.215, 1.385]
+      - id: Xu3
+        type: closed_axis_aligned_box_2d
+        x_bounds_m: [1.915, 3.085]
+        y_bounds_m: [-1.385, -0.215]
 
-obstacles:
-  - id: box_1
-    geometry:
-      type: box_3d
+projection:
+  physical_obstacle_source:
+    - id: box_1
       center_m: [1.5, 0.0, 0.40]
       size_m: [0.35, 0.35, 0.80]
-  - id: box_2
-    geometry:
-      type: box_3d
+    - id: box_2
       center_m: [2.5, 0.8, 0.50]
       size_m: [0.45, 0.45, 1.00]
-  - id: box_3
-    geometry:
-      type: box_3d
+    - id: box_3
       center_m: [2.5, -0.8, 0.50]
       size_m: [0.45, 0.45, 1.00]
+  rover_circumscribed_radius_m: 0.31
+  additional_safety_margin_m: 0.05
+  total_inflation_radius_m: 0.36
+  rule: conservative_axis_aligned_bounding_box_of_minkowski_sum
+  relation: projected_Xu_is_a_superset_of_inflated_physical_obstacles
 
-backends:
-  exact:
-    enabled_by_spec: true
-    model_binding: must_be_selected_by_experiment
-  gazebo:
-    enabled_by_spec: true
-    world_name: cbf_rover_world
-    world_resource: cbf_rover_sim/worlds/base.world
+normalization:
+  id: PB1_AFFINE_X_TO_UNIT_BOX
+  variable_order: [xi_x, xi_y]
+  xi_x:
+    formula: (x_m - 1.5) / 2.5
+    center_m: 1.5
+    scale_m: 2.5
+  xi_y:
+    formula: y_m / 2.0
+    center_m: 0.0
+    scale_m: 2.0
 
 episodes:
-  seeds: [11, 23, 47, 89, 131]
+  evaluation_seeds: [1009, 2027, 3037, 4051, 5059]
   episodes_per_seed: 20
   max_steps: 2000
-  reset_world_before_each_episode: true
-  reset_method_state_before_each_episode: true
-  stop_on:
-    - goal_reached
-    - unsafe_set_entered
-    - collision
-    - timeout
-    - runtime_error
+  horizon_s: 100.0
+  max_steps_is_formal_horizon: false
 
-topics:
-  clock: /clock
-  odometry: /odom
-  collision: /collision
-  command_request: /reference_command
-  command_external: /external_command
-  command_actuator: /cmd_vel
-  rgb: /camera/color/image_raw
-  depth: /camera/depth/image_raw
-  certificate_telemetry: /cbf_rover/certificate_telemetry
-
-acceptance_boundary:
-  scenario_geometry_is_validated: false
-  research_contract_confirmed: false
-  note: >
-    The geometry and sets are an explicit design specification, not a proof.
-    Formal claim eligibility requires a confirmed research contract and a
-    compatible independently validated certificate artifact.
+claims:
+  exact_backend: eligible_only_with_matching_independently_validated_artifact
+  gazebo_backend: empirical_only_until_a_tracking_error_contract_is_proved

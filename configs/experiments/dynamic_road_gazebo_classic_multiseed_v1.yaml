@@ -1,0 +1,142 @@
+schema_version: 1
+kind: dynamic_road_gazebo_classic_multiseed_experiment
+
+experiment:
+  id: GZ2_DYNAMIC_ROAD_LIVE_DISPLAY_MULTISEED_V1
+  status: frozen_before_execution
+  claim_class: empirical_gazebo_classic_stratified_geometry_validation
+
+bindings:
+  gazebo_episode_config: dynamic_road_gazebo_classic_v9.yaml
+
+catalog_provenance:
+  source_experiment_id: DR2_V2_MS1_MULTISEED_STRESS_V1
+  selection_rule: first_ascending_seed_per_lane_pattern
+  selection_uses_metrics_values: false
+  rationale: cover_every_5_bit_lane_pattern_without_selecting_on_control_outcomes
+
+seed_catalogs:
+  discovery:
+    purpose: implementation_and_batch_orchestration_discovery
+    eligible_for_final_empirical_claim: false
+    source_episode_metrics_sha256: af7cc900689a4cd050d457e453f31f54e9fa5ee9d0177af62d8f9f1041ac5b47
+    entries:
+      - {lane_pattern: "00000", seed: 7320028}
+      - {lane_pattern: "00001", seed: 7320002}
+      - {lane_pattern: "00010", seed: 7320014}
+      - {lane_pattern: "00011", seed: 7320004}
+      - {lane_pattern: "00100", seed: 7320031}
+      - {lane_pattern: "00101", seed: 7320003}
+      - {lane_pattern: "00110", seed: 7320061}
+      - {lane_pattern: "00111", seed: 7320015}
+      - {lane_pattern: "01000", seed: 7320033}
+      - {lane_pattern: "01001", seed: 7320023}
+      - {lane_pattern: "01010", seed: 7320046}
+      - {lane_pattern: "01011", seed: 7320049}
+      - {lane_pattern: "01100", seed: 7320016}
+      - {lane_pattern: "01101", seed: 7320076}
+      - {lane_pattern: "01110", seed: 7320008}
+      - {lane_pattern: "01111", seed: 7320017}
+      - {lane_pattern: "10000", seed: 7320005}
+      - {lane_pattern: "10001", seed: 7320001}
+      - {lane_pattern: "10010", seed: 7320021}
+      - {lane_pattern: "10011", seed: 7320011}
+      - {lane_pattern: "10100", seed: 7320006}
+      - {lane_pattern: "10101", seed: 7320039}
+      - {lane_pattern: "10110", seed: 7320036}
+      - {lane_pattern: "10111", seed: 7320020}
+      - {lane_pattern: "11000", seed: 7320012}
+      - {lane_pattern: "11001", seed: 7320035}
+      - {lane_pattern: "11010", seed: 7320000}
+      - {lane_pattern: "11011", seed: 7320041}
+      - {lane_pattern: "11100", seed: 7320030}
+      - {lane_pattern: "11101", seed: 7320007}
+      - {lane_pattern: "11110", seed: 7320056}
+      - {lane_pattern: "11111", seed: 7320019}
+
+  validation:
+    purpose: held_out_stratified_gazebo_physical_validation
+    eligible_for_final_empirical_claim: true
+    source_episode_metrics_sha256: 75d874b85f4fee6460ae84e464ba115c4b5bd6653e8bff696127e6c181b429a5
+    entries:
+      - {lane_pattern: "00000", seed: 7321017}
+      - {lane_pattern: "00001", seed: 7321001}
+      - {lane_pattern: "00010", seed: 7321022}
+      - {lane_pattern: "00011", seed: 7321037}
+      - {lane_pattern: "00100", seed: 7321006}
+      - {lane_pattern: "00101", seed: 7321056}
+      - {lane_pattern: "00110", seed: 7321012}
+      - {lane_pattern: "00111", seed: 7321016}
+      - {lane_pattern: "01000", seed: 7321065}
+      - {lane_pattern: "01001", seed: 7321038}
+      - {lane_pattern: "01010", seed: 7321023}
+      - {lane_pattern: "01011", seed: 7321014}
+      - {lane_pattern: "01100", seed: 7321004}
+      - {lane_pattern: "01101", seed: 7321003}
+      - {lane_pattern: "01110", seed: 7321034}
+      - {lane_pattern: "01111", seed: 7321143}
+      - {lane_pattern: "10000", seed: 7321010}
+      - {lane_pattern: "10001", seed: 7321039}
+      - {lane_pattern: "10010", seed: 7321015}
+      - {lane_pattern: "10011", seed: 7321000}
+      - {lane_pattern: "10100", seed: 7321011}
+      - {lane_pattern: "10101", seed: 7321007}
+      - {lane_pattern: "10110", seed: 7321009}
+      - {lane_pattern: "10111", seed: 7321024}
+      - {lane_pattern: "11000", seed: 7321086}
+      - {lane_pattern: "11001", seed: 7321008}
+      - {lane_pattern: "11010", seed: 7321029}
+      - {lane_pattern: "11011", seed: 7321049}
+      - {lane_pattern: "11100", seed: 7321141}
+      - {lane_pattern: "11101", seed: 7321013}
+      - {lane_pattern: "11110", seed: 7321002}
+      - {lane_pattern: "11111", seed: 7321109}
+
+execution:
+  order: ascending_lane_pattern
+  parallelism: 1
+  progress_interval_episodes: 1
+  per_episode_wall_clock_pacing: true
+  live_display_during_episode: true
+  render_during_batch: false
+  hard_timeout_s: 2400
+  silent_retry_allowed: false
+
+acceptance:
+  required_success_rate: 1.0
+  maximum_collision_episodes: 0
+  maximum_road_departure_episodes: 0
+  maximum_timeout_episodes: 0
+  minimum_lifted_certificate_barrier_m: -1.0e-9
+  minimum_cbf_constraint_residual_mps: -1.0e-9
+  minimum_measured_contraction_residual_m: -1.0e-9
+  maximum_mapping_residual_mps: 1.0e-12
+  maximum_position_tracking_residual_m: 0.04
+  maximum_heading_tracking_residual_rad: 0.10
+  maximum_absolute_roll_rad: 0.05
+  maximum_absolute_pitch_rad: 0.05
+  maximum_linear_speed_mps: 0.5000000001
+  maximum_absolute_angular_speed_radps: 1.5000000001
+  minimum_achieved_realtime_factor: 0.95
+  maximum_achieved_realtime_factor: 1.01
+  required_lane_pattern_count: 32
+  require_no_post_projection_command_clipping: true
+  require_live_display_each_episode: true
+  require_wall_clock_pacing_each_episode: true
+
+independent_replay:
+  policy: rerun_selected_worst_validation_member_after_batch
+  selection_metric: maximum_position_tracking_residual_m
+  replay_config: dynamic_road_gazebo_classic_replay_v5.yaml
+  selection_is_post_hoc_diagnostic_only: true
+
+claims:
+  gazebo_batch: empirical_finite_catalog_only
+  catalog_selection: lane_pattern_stratified_without_outcome_metrics
+  live_display: observer_only_runtime_visualization_each_episode
+  differential_drive_tracking: empirical_gazebo_classic_ode
+  tracking_error_bound: empirical_confirmation_envelope_only
+  sampling_probability_bound: not_claimed
+  random_geometry_q_sbc: not_claimed
+  ros2_result: not_claimed
+  real_vehicle_claim: forbidden

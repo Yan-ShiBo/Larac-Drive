@@ -1,0 +1,125 @@
+schema_version: 1
+kind: certificate_synthesis_spec
+id: G4_G10E_QSBC_V1
+
+theorem:
+  id: G4_QSBC_INFINITE_HORIZON_REACH_AVOID_V1
+  unchanged: true
+  obligations:
+    - W >= 0 on X
+    - W <= q on X0
+    - W >= 1 on Xu
+    - E[W_next] <= W - epsbar on Psi
+
+frozen_inputs:
+  identical_to_G10_G10R: true
+  model_decision_ids:
+    - M1_STOCHASTIC_SINGLE_INTEGRATOR_2D
+    - S1_DT005_SPEED_DISK05_NO_POST_CLIP
+    - P1_CONSERVATIVE_INFLATED_AABB
+    - D1_COMPACT_ROBUST_FORWARD_INVARIANT
+    - N1_IID_SYMMETRIC_TRIANGULAR_5MM
+  controller_id: CBF_ROVER_C2_LOWER_ROUTE_V1
+  controller_content_sha256: b0cacedfcd4b884961a786b24e84b2f0f33bbc4ac81aef0b1ff1b0dcfe285984
+  controller_file_sha256: df0dbfd2cc5b3aa0a049b5dbb6e7d0360c6b260801e183e95acfb7a9bccf715d
+  controller_validation_id: C2V1_PIECEWISE_BERNSTEIN_AND_1000_ROLLOUTS
+  runtime_mode: monitor_only
+  certificate_evaluator_modifies_action: false
+
+synthesis:
+  id: G10E_EXTENDED_CHEBYSHEV_SHAPE_MULTIPLIER_LP_V1
+  predecessors:
+    - G10_CHEBYSHEV_POLYNOMIAL_MULTIPLIER_SPARSE_LP_V1
+    - G10R_CHEBYSHEV_SHAPE_MULTIPLIER_SPARSE_LP_V1
+  solver: SciPy_HiGHS
+  matrix_format: CSR
+  global_dense_matrix_allowed: false
+  objective: maximize_common_rho_with_q_fixed
+  rho_bounds: [-1.0, 1.0]
+  q:
+    decimal: 0.09999999999999999
+    float64_hex: 0x1.9999999999999p-4
+    exact_binary64_is_no_greater_than_one_tenth: true
+  epsbar:
+    decimal: 0.000001
+    float64_hex: 0x1.0c6f7a0b5ed8dp-20
+    semantics: exact_binary64_artifact_value
+  barrier_basis: normalized_total_degree_tensor_chebyshev
+  barrier_coefficient_bounds: [-1000.0, 1000.0]
+  retained_shape_multiplier_basis: tensor_bernstein
+  retained_shape_multiplier_coefficient_bounds: [0.0, 100000.0]
+  retained_semialgebraic_guards:
+    initial_disk: radius_squared_minus_distance_squared
+    goal_exterior: distance_squared_minus_radius_squared
+  eliminated_same_box_guards:
+    guards: [normalized_x_guard, normalized_y_guard]
+    multiplier_polynomial_count: 444
+    proof_id: G10E_SAME_BOX_GUARD_PROJECTION_EQUIVALENCE_W18_W20_V1
+    reuses_G10R_exact_identity: true
+    projection_feasible_set_unchanged: true
+    optimum_rho_unchanged_in_exact_arithmetic: true
+  frozen_counts:
+    active_obligations: 222
+    active_drift_boxes: 202
+    goal_boundary_boxes: 28
+    retained_shape_multiplier_polynomials: 29
+    decision_variables:
+      W18_M4: 916
+      W20_M4: 957
+    expected_linear_inequalities:
+      W18_M4: 121182
+      W20_M4: 148302
+  partition:
+    full_X_parts_per_axis: 4
+    base_drift_refinement_depth: 1
+    goal_boundary_refinement_depth: 2
+  highs:
+    presolve: true
+    primal_feasibility_tolerance: 1.0e-9
+    dual_feasibility_tolerance: 1.0e-9
+  finite_schedule:
+    - stage_id: W18_M4
+      barrier_degree: 18
+      multiplier_degree: 4
+      time_limit_s: 7200
+    - stage_id: W20_M4
+      barrier_degree: 20
+      multiplier_degree: 4
+      time_limit_s: 10800
+  escalation_beyond_schedule_allowed: false
+  all_stages_fail_status: not_ready
+
+projection_equivalence:
+  id: G10E_SAME_BOX_GUARD_PROJECTION_EQUIVALENCE_W18_W20_V1
+  inherited_identity: G10R_SAME_BOX_GUARD_PROJECTION_EQUIVALENCE_V1
+  degree_gate:
+    W18_M4: "18 >= 4 + 2"
+    W20_M4: "20 >= 4 + 2"
+  curved_shape_guards_are_not_redundant: true
+
+candidate_gate:
+  requires_positive_numeric_rho: true
+  solver_optimality_required_for_V3: false
+  formal_claim_before_V3: false
+
+independent_validation:
+  identical_to_G10_G10R: true
+  id: G5_EXACT_RATIONAL_BERNSTEIN_REPLAY_V3
+  report_schema_version: 2
+  acceptance_tolerance: 0.0
+  reads_solver_status: false
+  reads_LP_matrix: false
+  reads_multiplier_values: false
+  reconstructs_original_G4_polynomials: true
+  replays_controller_S1_and_D1: true
+  unknown: fail_closed
+
+acceptance:
+  ready:
+    - V3 status == validated
+    - V3 first_slice_ready == true
+    - exact_binary64(q) <= 1/10
+    - exact_binary64(epsbar) > 0
+  first_validated_stage_stops_schedule: true
+  no_automatic_stage_after_W20_M4: true
+  no_solver_or_multiplier_result_is_formal_evidence: true

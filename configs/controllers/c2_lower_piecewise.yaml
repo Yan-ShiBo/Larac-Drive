@@ -1,0 +1,47 @@
+schema_version: 2
+controller_id: CBF_ROVER_C2_LOWER_ROUTE_V1
+decision_id: C2_FIXED_LOWER_PIECEWISE_POLYNOMIAL_V1
+construction: geometry_driven_after_DX1
+claim_level: candidate_pending_C2V1
+
+normalization:
+  xi_x: (x_m-1.5)/2.5
+  xi_y: y_m/2.0
+
+partition:
+  variable: x_m
+  breaks_m: [-1.0, 0.8, 3.2, 4.0]
+  runtime_boundary_semantics: ordered_closed_first_match
+  formal_boundary_semantics: validate_both_adjacent_closures
+
+pieces:
+  - id: lower_entry
+    x_interval_m: [-1.0, 0.8]
+    u_x: -0.05 - 0.25*xi_x
+    u_y: -0.28 - 0.11*xi_y + 0.28*xi_y^2
+  - id: lower_transit
+    x_interval_m: [0.8, 3.2]
+    u_x: 0.18 - 0.25*xi_x
+    u_y: -0.26 - 0.11*xi_y + 0.26*xi_y^2
+  - id: goal_capture
+    x_interval_m: [3.2, 4.0]
+    u_x: 0.42 - 0.525*xi_x
+    u_y: -0.20*xi_y
+
+fixed_semantics:
+  state_order: [x_m, y_m]
+  action_order: [u_x_mps, u_y_mps]
+  frame_id: world
+  runtime_mode: monitor_only
+  post_controller_clipping_allowed: false
+
+validation:
+  id: C2V1_PIECEWISE_BERNSTEIN_AND_1000_ROLLOUTS
+  action_disk_margin: 1.0e-6
+  robust_D1_margin_m: 1.0e-6
+  rollout_base_seeds: 10
+  episodes_per_seed: 100
+  required_goal_rate: 0.99
+  required_hard_failures: 0
+
+certificate_feedback_used: false

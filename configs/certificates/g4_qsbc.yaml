@@ -1,0 +1,68 @@
+schema_version: 4
+kind: certificate_synthesis_spec
+id: G4_G8_QSBC_V4
+
+theorem:
+  id: G4_QSBC_INFINITE_HORIZON_REACH_AVOID_V1
+  stopping_time: "inf{k >= 0 : x[k] in Xg union Xu}"
+  obligations:
+    - W >= 0 on X
+    - W <= q on X0
+    - W >= 1 on Xu
+    - E[W(x_next) | x] <= W(x) - epsbar on Psi
+    - q in [0, 1)
+    - epsbar > 0
+    - D1 robust successor invariance
+  conclusions:
+    - P(hit Xu before Xg) <= q
+    - P(hit Xg before Xu) >= 1-q
+    - E[stopping_time] <= q/epsbar
+  horizon: infinite
+  max_steps_2000_is_diagnostic_only: true
+
+synthesis:
+  id: G8_BERNSTEIN_SCALAR_MULTIPLIER_LP_W14_V1
+  method: sufficient_Bernstein_partition_LP_with_scalar_S_procedure
+  solver: SciPy_HiGHS
+  predecessor:
+    id: G7_BERNSTEIN_PARTITION_HIGHS_DEGREE_14_16_V1
+    terminal_status: W14_formal_valid_not_ready_W16_time_limit
+  bernstein_partition:
+    full_X_parts_per_axis: 4
+    base_drift_refinement_depth: 1
+    goal_boundary_refinement_depth: 2
+    coefficient_margin: 0.0000002
+  scalar_S_procedure:
+    initial_disk_guard: radius_squared_minus_distance_squared
+    goal_exterior_guard: distance_squared_minus_radius_squared
+    multiplier_basis: nonnegative_scalar_per_active_boundary_box
+    multiplier_bounds: [0.0, 100000.0]
+    independent_validator_reads_multipliers: false
+  barrier_basis: normalized_total_degree
+  barrier_degree_schedule: [14]
+  escalation_beyond_schedule_allowed: false
+  W_coefficient_bounds: [-1000.0, 1000.0]
+  epsbar_fixed: 0.000001
+  objectives:
+    - minimize_q_with_epsbar_fixed_at_1e-6
+  controller_is_read_only: true
+  exact_N1_moments: true
+  time_limit_s_per_degree: 900
+
+independent_validation:
+  id: G5_EXACT_FLOAT_BERNSTEIN_REPLAY_V2
+  reads_solver_status: false
+  reads_SOS_multipliers: false
+  reads_Gram_matrices: false
+  reconstructs_final_polynomials: true
+  acceptance_tolerance: 0.0000001
+  unknown: fail_closed
+
+acceptance:
+  formal_valid:
+    q_upper_exclusive: 1.0
+    epsbar_strictly_positive: true
+    independent_validation: validated
+  first_slice_ready:
+    q_upper_inclusive: 0.10
+    controller_C2V1: validated

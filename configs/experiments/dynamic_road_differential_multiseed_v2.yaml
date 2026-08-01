@@ -1,0 +1,57 @@
+schema_version: 1
+kind: dynamic_road_differential_multiseed_experiment
+
+experiment:
+  id: DR3_V3_MS2_MULTISEED_STRESS_V2
+  status: frozen_before_execution
+  claim_class: exact_backend_empirical_nonholonomic
+
+bindings:
+  differential_config: dynamic_road_differential_v3.yaml
+
+seed_catalogs:
+  discovery:
+    start_inclusive: 7330000
+    count: 256
+    purpose: forward_only_lane_supervisor_discovery
+    eligible_for_final_empirical_claim: false
+  validation:
+    start_inclusive: 7331000
+    count: 1024
+    purpose: held_out_forward_only_lane_supervisor_validation
+    eligible_for_final_empirical_claim: true
+
+execution:
+  order: ascending_seed
+  parallelism: 1
+  progress_interval_episodes: 16
+  maximum_saved_failure_traces: 32
+  hard_timeout_s: 1800
+  silent_retry_allowed: false
+
+acceptance:
+  required_success_rate: 1.0
+  maximum_collision_episodes: 0
+  maximum_road_departure_episodes: 0
+  maximum_timeout_episodes: 0
+  maximum_cbf_infeasible_episodes: 0
+  maximum_model_contract_breach_episodes: 0
+  minimum_lifted_certificate_barrier_m: -1.0e-9
+  minimum_cbf_constraint_residual_mps: -1.0e-9
+  minimum_realized_contraction_residual_m: -1.0e-9
+  maximum_mapping_residual_mps: 1.0e-12
+  maximum_linear_speed_mps: 0.5000000001
+  maximum_absolute_angular_speed_radps: 1.5000000001
+  required_lane_pattern_count: 32
+  require_no_post_projection_command_clipping: true
+  require_same_metrics_sha256_replay: true
+
+empirical_interval:
+  method: exact_one_sided_clopper_pearson_when_all_success
+  confidence: 0.95
+
+claims:
+  exact_batch: empirical_only
+  random_geometry_q_sbc: not_claimed
+  gazebo_tracking_claim: not_claimed
+  real_vehicle_claim: forbidden

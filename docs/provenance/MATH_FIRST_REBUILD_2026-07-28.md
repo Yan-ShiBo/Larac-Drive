@@ -34,7 +34,8 @@ exact backend 开始。
 - 不恢复已经删除的旧结果、权重、ROS1 或实车驱动；
 - 不运行本地测试、模型、训练、ROS2、Colcon 或 Gazebo；
 - 不伪造 q-SBC 公式、证书系数、solver success 或 independent validation；
-- 大模型、数据和运行结果仍位于仓库外；
+- 大模型、数据和运行结果位于项目内的 Git 忽略目录（`artifacts/payloads/`、
+  `data/`、`runs/`）；
 - 只保留拥有当前具体职责的三个 ROS2 包。
 
 ## 旧目录退出与新职责

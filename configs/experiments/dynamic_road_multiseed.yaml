@@ -1,0 +1,55 @@
+schema_version: 1
+kind: dynamic_road_multiseed_experiment
+
+experiment:
+  id: DR1_MS1_MULTISEED_STRESS_V1
+  display_name: Dynamic-road online-CBF multi-seed stress test
+  claim_class: empirical_exact_backend
+
+bindings:
+  scenario_config: ../scenarios/dynamic_road_random_obstacles.yaml
+
+seed_catalogs:
+  discovery:
+    start_inclusive: 7310000
+    count: 256
+    purpose: development_failure_discovery
+    eligible_for_final_empirical_claim: false
+  validation:
+    start_inclusive: 7311000
+    count: 1024
+    purpose: held_out_empirical_validation
+    eligible_for_final_empirical_claim: true
+
+execution:
+  order: ascending_seed
+  parallelism: 1
+  progress_interval_episodes: 16
+  maximum_saved_failure_traces: 32
+  per_episode_wall_clock_pacing: false
+  render_during_batch: false
+  hard_timeout_s: 1800
+
+acceptance:
+  required_success_rate: 1.0
+  maximum_collision_episodes: 0
+  maximum_road_departure_episodes: 0
+  maximum_timeout_episodes: 0
+  maximum_cbf_infeasible_episodes: 0
+  minimum_certificate_barrier_m: -1.0e-9
+  minimum_cbf_constraint_residual_mps: -1.0e-9
+  maximum_filtered_speed_mps: 0.5000000001
+  required_lane_pattern_count: 32
+  require_same_metrics_sha256_replay: true
+
+empirical_interval:
+  confidence: 0.95
+  method_when_all_succeed: exact_one_sided_clopper_pearson
+  interpretation: lower_bound_on_per_seed_success_probability_under_catalog_sampling
+
+claims:
+  exact_batch: empirical_only
+  seed_catalog: fixed_before_execution
+  random_geometry_q_sbc: not_claimed
+  static_qsbc_inheritance: forbidden
+  gazebo_tracking_claim: not_applicable

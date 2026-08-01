@@ -1,0 +1,42 @@
+schema_version: 1
+kind: stochastic_system_spec
+id: M1_STOCHASTIC_SINGLE_INTEGRATOR_2D
+
+state:
+  order: [x_m, y_m]
+  frame_id: world
+  units: [m, m]
+
+action:
+  order: [u_x_mps, u_y_mps]
+  frame_id: world
+  units: [m/s, m/s]
+  admissible_set:
+    type: closed_l2_disk
+    radius_mps: 0.5
+  post_controller_clipping_allowed: false
+
+dynamics:
+  equation: x_next = x + dt * u + w
+  type: direct_discrete
+  dt_s: 0.05
+
+noise:
+  id: N1_IID_SYMMETRIC_TRIANGULAR_5MM
+  axes_independent: true
+  time_iid: true
+  per_axis:
+    distribution: triangular
+    low_m: -0.005
+    mode_m: 0.0
+    high_m: 0.005
+  exact_moment_formula:
+    odd: 0
+    even: 2*a^r/((r+1)*(r+2))
+    a_m: 0.005
+  monte_carlo_allowed_for_formal_expectation: false
+
+diagnostic_episode:
+  max_steps: 2000
+  duration_s: 100.0
+  formal_horizon: infinite

@@ -1,0 +1,110 @@
+schema_version: 1
+kind: certificate_synthesis_spec
+id: G4_G10A2_QSBC_V1
+
+theorem:
+  id: G4_QSBC_INFINITE_HORIZON_REACH_AVOID_V1
+  unchanged: true
+  obligations:
+    - W >= 0 on X
+    - W <= q on X0
+    - W >= 1 on Xu
+    - E[W_next] <= W - epsbar on Psi
+
+frozen_inputs:
+  identical_to_G10A: true
+  controller_id: CBF_ROVER_C2_LOWER_ROUTE_V1
+  controller_content_sha256: b0cacedfcd4b884961a786b24e84b2f0f33bbc4ac81aef0b1ff1b0dcfe285984
+  controller_file_sha256: df0dbfd2cc5b3aa0a049b5dbb6e7d0360c6b260801e183e95acfb7a9bccf715d
+  runtime_mode: monitor_only
+  certificate_evaluator_modifies_action: false
+
+synthesis:
+  id: G10A2_EXACT_BERNSTEIN_PRESEPARATION_LP_V1
+  proof_route_id: G10A2_D5_EXACT_PRESEPARATION_UNCHANGED_V3_V1
+  route: independent_fallback_beside_G10A_and_G10E
+  barrier_degree: 16
+  barrier_basis: normalized_total_degree_tensor_chebyshev
+  barrier_coefficient_count: 153
+  barrier_coefficient_bounds: [-1000.0, 1000.0]
+  q:
+    decimal: 0.09999999999999999
+    float64_hex: 0x1.9999999999999p-4
+  epsbar:
+    decimal: 0.000001
+    float64_hex: 0x1.0c6f7a0b5ed8dp-20
+  decision_layout: [c_0_to_c_152, rho, t, z_0_to_z_152]
+  rho:
+    bounds: [0.0, 0.0]
+    objective_coefficient: 0.0
+    read_by_exact_coefficient_cuts: false
+    read_by_formal_validator: false
+  projection_objective:
+    phase_1: minimize_max_abs_Chebyshev_coefficient_distance_to_bound_G9_seed
+    phase_2: minimize_sum_abs_Chebyshev_coefficient_distance_to_bound_G9_seed
+    phase_2_t_upper: nextafter(t_star,+inf)+1e-9
+    pure_L1_first_objective_allowed: false
+  fixed_LP_solve_count: 8
+  fixed_candidate_count: 4
+  fixed_exact_catalog:
+    split_rule: widest_axis_x_on_tie_exact_midpoint
+    canonical_leaf_identity_fields: [family, depth, domain_class, exact_box]
+    expected_leaf_set_sha256_frozen_per_depth: true
+    runtime_scanned_leaf_set_sha256_must_match: true
+    passes:
+      - {id: D3_ONE_PER_BOX, depth: 3, max_new_negative_coefficients_per_active_box: 1}
+      - {id: D4_TWO_PER_BOX, depth: 4, max_new_negative_coefficients_per_active_box: 2}
+      - {id: D5_FOUR_PER_BOX, depth: 5, max_new_negative_coefficients_per_active_box: 4}
+    final_gate:
+      depth: 5
+      scans_actual_V3_subject_residual_degrees: true
+      negative_coefficient_allowed: false
+      complete_42_family_catalog_required: true
+      expected_and_scanned_leaf_set_hash_must_match: true
+    max_selected_coefficient_rows: 7056
+    whole_box_row_blocks_allowed: false
+  resource_caps:
+    aggregate_LP_wall_time_s: 1800
+    aggregate_exact_preseparator_wall_time_s: 3600
+    stage_wall_time_s: 10800
+    max_RSS_bytes: 1073741824
+    RSS_measurement: linux_proc_self_status_VmHWM_process_high_water_mark
+    max_master_rows: 7710
+    max_ephemeral_rows: 7711
+    max_CSR_nonzeros: 1087873
+    max_decision_variables: 308
+    missing_RSS_measurement: fail_closed
+
+independent_validation:
+  id: G5_EXACT_RATIONAL_BERNSTEIN_REPLAY_V3
+  unchanged: true
+  max_full_V3_calls: 1
+  report_schema_version: 2
+  acceptance_tolerance: 0.0
+  reads_preseparator_reports: false
+  reads_selected_cut_ledger: false
+  reads_solver_objective_or_rho_t_z: false
+  reconstructs_original_G4_polynomials: true
+  report_tree_barrier_controller_q_eps_hashes_cross_bound: true
+
+acceptance:
+  ready:
+    - complete final D5 exact preseparator gate passed
+    - exactly one unchanged V3 call was executed
+    - V3 schema_version == 2
+    - V3 status == validated
+    - V3 first_slice_ready == true
+    - unchanged V3 release gate passed
+    - all subject, tree, model, controller, q, and epsbar bindings passed
+  V3_failure_retry_allowed: false
+  publication_transaction:
+    pre_write_peak_RSS_and_stage_deadline_gate: true
+    pending_filename: certificate.pending.json
+    post_write_peak_RSS_and_stage_deadline_gate: true
+    atomic_final_filename: certificate.json
+    post_commit_peak_RSS_and_stage_deadline_gate: true
+    exception_cleanup_removes_pending_and_final: true
+  preseparator_is_formal_evidence: false
+  numeric_LP_is_formal_evidence: false
+  automatic_degree_or_catalog_escalation_allowed: false
+  failure_status: not_ready

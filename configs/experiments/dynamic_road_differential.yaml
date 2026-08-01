@@ -1,0 +1,70 @@
+schema_version: 1
+kind: dynamic_road_differential_cbf_spec
+
+experiment:
+  id: DR2_LOOKAHEAD_DIFFERENTIAL_CBF_V1
+  phase: discovery
+  default_seed: 7311127
+  claim_class: exact_backend_empirical_nonholonomic
+
+base_scenario_config: ../scenarios/dynamic_road_random_obstacles.yaml
+
+model:
+  id: M2_STOCHASTIC_DIFFERENTIAL_DRIVE_EULER
+  state_order: [x_m, y_m, heading_rad]
+  action_order: [linear_mps, angular_radps]
+  dt_s: 0.05
+  initial_heading_rad: 0.0
+  max_linear_mps: 0.5
+  max_angular_radps: 1.5
+  allow_reverse: false
+  integration: explicit_euler
+  position_noise: inherit_N1_from_base_scenario
+  heading_noise: none
+
+lookahead_mapping:
+  id: D2_LOOKAHEAD_DIFFERENTIAL_MAPPER_V1
+  lookahead_distance_m: 0.15
+  admissible_velocity_set:
+    - 0 <= linear_mps <= max_linear_mps
+    - abs(angular_radps) <= max_angular_radps
+    - norm(lookahead_velocity_mps) <= base_S1_max_speed_mps
+  projection_includes_command_bounds: true
+  post_projection_command_clipping_allowed: false
+
+lifted_online_cbf:
+  id: DR2_LOOKAHEAD_ROBUST_DISTANCE_CBF_V1
+  evaluation_point: body_center_plus_lookahead
+  additional_body_inflation_m: 0.15
+  inflation_rule: rover_disk_plus_lookahead_distance
+  euler_heading_remainder:
+    treatment: add_worst_case_coordinate_support_to_N1
+    formula: lookahead*norm([cos(dt*omega_max)-1, sin(dt*omega_max)-dt*omega_max])
+  modifies_lookahead_velocity: true
+  modifies_differential_command_after_mapping: false
+
+episode:
+  max_steps: 2000
+  maximum_duration_s: 100.0
+  display_stride: 4
+  wall_clock_playback_rate: 1x
+
+acceptance:
+  required_status: goal_reached
+  required_obstacle_activations: 5
+  maximum_collision_count: 0
+  maximum_road_departure_count: 0
+  minimum_lifted_certificate_barrier_m: -1.0e-9
+  minimum_cbf_constraint_residual_mps: -1.0e-9
+  minimum_realized_contraction_residual_m: -1.0e-9
+  maximum_mapping_residual_mps: 1.0e-12
+  require_no_post_projection_command_clipping: true
+  require_same_seed_trace_sha256_match: true
+
+claims:
+  lifted_online_distance_cbf: runtime_evaluated_action_filter
+  differential_drive_tracking: exact_for_declared_Euler_model
+  stochastic_result: empirical_seeded_trajectory
+  random_geometry_q_sbc: not_claimed
+  gazebo_tracking_claim: not_claimed
+  real_vehicle_claim: forbidden

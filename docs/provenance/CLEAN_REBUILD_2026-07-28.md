@@ -58,11 +58,12 @@
 - `src/cbf_rover/datasets`、`policies`、`cli`：数据、参考策略接口和统一命令；
 - `simulation/ros2_ws/src`：description、Gazebo、ROS lifecycle bridge 三包；
 - `configs`：method、policy、scenario、experiment、runtime 五个配置域；
-- `artifacts/manifests`：仓库外制品身份、来源和激活门禁；
+- `artifacts`：项目内 payload 的身份、来源和激活门禁；
 - `tests`：unit、provenance、integration、ros2 四层服务器测试。
 
 learned 推理只能从 `artifact_set.status: ready` 且相关 slot 为 `verified` 的
-manifest 构造 checkpoint set。文件必须位于 `CBF_ROVER_ARTIFACT_ROOT` 内，
+manifest 构造 checkpoint set。文件必须位于项目内
+`artifacts/payloads/`（`CBF_ROVER_ARTIFACT_ROOT`）内，
 字节数与 SHA-256 匹配，并使用 Torch `weights_only=True` 加载。当前五个槽位
 全部为 `missing`，方法与实验保持禁用。
 

@@ -44,7 +44,8 @@ Gazebo `Twist` 的 codec、ScenarioSpec resolver 和实验 orchestrator 尚未�
 
 ## 模型加载门禁
 
-运行时必须从 `CBF_ROVER_ARTIFACT_ROOT` 和版本化 manifest 构造 checkpoint set。
+运行时必须从项目内 `artifacts/payloads/`（`CBF_ROVER_ARTIFACT_ROOT`）和版本化
+manifest 构造 checkpoint set。
 需要同时满足：
 
 - `artifact_set.status: ready`；

@@ -1,0 +1,101 @@
+schema_version: 1
+kind: dynamic_road_gazebo_classic_cbf_spec
+
+experiment:
+  id: GZ5_DISCOVERY_CALIBRATED_AUDITED_STARTUP_CBF_LIVE_DISPLAY_V13
+  phase: discovery
+  default_seed: 7320014
+  claim_class: empirical_gazebo_classic_discovery_calibrated_tracking_closed_loop
+
+base_differential_config: dynamic_road_differential_v3.yaml
+
+gazebo_classic:
+  required_major_version: 11
+  physics_engine: ode
+  world_name: cbf_rover_world
+  model_name: cbf_rover
+  master_uri: http://127.0.0.1:11470
+  physics_step_s: 0.001
+  solver_iterations: 40
+  control_iterations_per_step: 50
+  startup_timeout_s: 120.0
+  startup_attempt_limit: 3
+  startup_retry_backoff_s: 1.0
+  state_timeout_s: 20.0
+  command_plugin: libDiffDrivePlugin.so
+  state_plugin: libcbf_rover_gazebo_state_plugin.so
+  plugin_angular_command_sign: -1.0
+  bridge_pose_world_timestamp_alignment: required
+  headless: true
+  paused_fixed_step: true
+  remote_model_database_allowed: false
+
+live_display:
+  enabled: true
+  bind_host: 127.0.0.1
+  port: 11469
+  display_stride: 4
+  refresh_interval_s: 0.20
+  wall_clock_paced: true
+  atomic_snapshot_updates: true
+  display_sink_control_feedback: false
+  obstacle_display_policy: visible_after_controller_activation
+
+physical_rover:
+  base_size_m: [0.48, 0.38, 0.12]
+  base_mass_kg: 8.0
+  wheel_radius_m: 0.10
+  wheel_width_m: 0.05
+  wheel_mass_kg: 0.60
+  wheel_separation_m: 0.44
+  wheel_axle_x_m: 0.10
+  rear_caster_radius_m: 0.04
+  rear_caster_x_m: -0.19
+  conservative_disk_must_cover_body: true
+
+obstacle_projection:
+  geometry: physical_cylinder
+  spawn_policy: present_from_world_start
+  controller_activation: inherit_seeded_appearance_distance
+  inactive_obstacles_are_unknown_to_controller: true
+
+tracking_envelope:
+  source_experiment_id: GZ4_V12_DISCOVERY_SEED_7330000_TRACKING_CALIBRATION
+  source_trace_sha256: c34e1a76009c193c6e1603ab8b9feb7049b7c76cdc183c40c8fc0ea383091913
+  source_catalog_metrics_sha256: 48166004b9929443e777805f20a3c561ca3f878904159e0de8fd0e0328e68070
+  position_coordinate_half_width_m: 0.016
+  heading_error_bound_rad: 0.065
+  construction: rounded_outward_from_complete_V12_32_pattern_discovery_maxima
+
+acceptance:
+  required_status: goal_reached
+  required_obstacle_activations: 5
+  maximum_collision_count: 0
+  maximum_road_departure_count: 0
+  minimum_lifted_certificate_barrier_m: -1.0e-9
+  minimum_cbf_constraint_residual_mps: -1.0e-9
+  minimum_measured_contraction_residual_m: -1.0e-9
+  maximum_mapping_residual_mps: 1.0e-12
+  maximum_position_tracking_residual_m: 0.016
+  maximum_heading_tracking_residual_rad: 0.065
+  maximum_absolute_roll_rad: 0.05
+  maximum_absolute_pitch_rad: 0.05
+  require_no_post_projection_command_clipping: true
+  require_isolated_master_uri: true
+  require_live_display_updates_during_episode: true
+  require_display_sink_control_feedback_false: true
+
+claims:
+  online_distance_cbf: evaluated_from_timestamp_aligned_measured_gazebo_pose_each_control_step
+  lane_selection: passed_obstacles_excluded_from_nominal_route_decisions
+  tracking_envelope: empirical_discovery_calibrated_and_revalidated_on_every_run
+  startup_retry: audited_before_initial_state_only_never_after_control_begins
+  bridge_startup_completion: config_bounded_timestamped_pose_iteration_without_world_stats_gate
+  bridge_step_completion: direct_timestamped_pose_iteration_without_world_stats_gate
+  live_display: observer_only_runtime_visualization
+  differential_drive_tracking: empirical_gazebo_classic_ode
+  tracking_error_bound: empirical_confirmation_envelope_only
+  stochastic_position_noise: not_injected_but_N1_support_retained_in_filter
+  random_geometry_q_sbc: not_claimed
+  ros2_result: not_claimed
+  real_vehicle_claim: forbidden

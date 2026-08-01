@@ -1,0 +1,91 @@
+schema_version: 1
+kind: dynamic_road_online_cbf_spec
+
+scenario:
+  id: DR1_TWO_LANE_RANDOM_OBSTACLES_V1
+  display_name: Two-lane road with seeded obstacle appearances
+  frame_id: world
+  units: SI
+  claim_class: empirical_runtime_demo
+
+authority:
+  source_of_truth: configs/scenarios/dynamic_road_random_obstacles.yaml
+  original_handover_archives_are_inputs: false
+  static_qsbc_artifacts_are_reused: false
+
+system:
+  model_id: M1_STOCHASTIC_SINGLE_INTEGRATOR_2D
+  state_order: [x_m, y_m]
+  action_order: [u_x_mps, u_y_mps]
+  dt_s: 0.05
+  max_speed_mps: 0.5
+  post_filter_clipping_allowed: false
+  noise:
+    id: N1_IID_SYMMETRIC_TRIANGULAR_5MM
+    axes_independent: true
+    time_iid: true
+    half_width_m: 0.005
+
+road:
+  x_bounds_m: [0.0, 14.0]
+  physical_y_bounds_m: [-1.35, 1.35]
+  lane_centers_y_m: [-0.58, 0.58]
+  start_m: [0.50, -0.58]
+  finish_line_x_m: 13.25
+  rover_circumscribed_radius_m: 0.31
+
+random_obstacles:
+  count: 5
+  default_seed: 7302026
+  x_anchor_m: [4.0, 6.0, 8.0, 10.0, 12.0]
+  x_jitter_m: 0.20
+  physical_radius_range_m: [0.14, 0.20]
+  appearance_distance_range_m: [2.8, 3.2]
+  lane_sampling: independent_uniform
+  certificate_safety_margin_m: 0.05
+
+nominal_controller:
+  id: DR1_LANE_SUPERVISOR_V1
+  forward_speed_mps: 0.42
+  max_nominal_speed_mps: 0.46
+  lateral_gain_per_s: 1.6
+  lane_switch_lookahead_m: 0.6
+  obstacle_pass_margin_m: 0.45
+  finish_slowdown_distance_m: 0.75
+
+online_cbf:
+  id: DR1_ROBUST_DISTANCE_CBF_V1
+  barrier: h = distance_to_hazard_boundary_m
+  discrete_contraction_kappa: 0.20
+  disturbance_treatment: exact_support_lower_bound_for_N1
+  action_solver: exact_2d_projection_onto_halfspaces_intersect_l2_disk
+  feasibility_tolerance: 1.0e-10
+  obstacle_constraints: active_obstacles_only
+  road_boundary_constraints: always_active
+  modifies_action: true
+  post_filter_clipping_allowed: false
+
+episode:
+  max_steps: 2000
+  maximum_duration_s: 100.0
+  display_stride: 4
+  wall_clock_playback_rate: 1x
+
+acceptance:
+  required_status: goal_reached
+  required_obstacle_activations: 5
+  maximum_collision_count: 0
+  maximum_road_departure_count: 0
+  minimum_certificate_barrier_m: -1.0e-9
+  minimum_cbf_constraint_residual_mps: -1.0e-9
+  minimum_filter_intervention_step_count: 1
+  require_no_post_filter_clipping: true
+  require_same_seed_trace_sha256_match: true
+
+claims:
+  online_distance_cbf: runtime_evaluated_action_filter
+  seeded_scenario: deterministic_given_seed_and_environment
+  full_episode: empirical_single_trajectory_until_multi_seed_evaluation
+  static_qsbc_inheritance: forbidden
+  q_sbc_probability_bound: not_claimed
+  gazebo_tracking_claim: not_applicable

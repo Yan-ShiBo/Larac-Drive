@@ -7,7 +7,8 @@
 
 - 记录 Git revision、branch/tag 和工作区状态；
 - 记录 OS、Python、ROS2、Gazebo、solver、CUDA、GPU 和框架版本；
-- 确认 `CBF_ROVER_ARTIFACT_ROOT` 与 `CBF_ROVER_RUN_ROOT` 位于仓库外；
+- 确认本地 `CBF_ROVER_ARTIFACT_ROOT` 与 `CBF_ROVER_RUN_ROOT` 分别解析到项目内
+  `artifacts/payloads/` 与 `runs/`；记录远程服务器临时根，并把正式结果同步回 `runs/`；
 - 独立复核 `接手的原始文件/` 仍只有最初三份压缩包及预期 SHA-256；
 - 保存所有解析配置的内容哈希。
 

@@ -1,0 +1,127 @@
+schema_version: 1
+kind: certificate_synthesis_spec
+id: G4_G10A_QSBC_V1
+
+theorem:
+  id: G4_QSBC_INFINITE_HORIZON_REACH_AVOID_V1
+  unchanged: true
+  obligations:
+    - W >= 0 on X
+    - W <= q on X0
+    - W >= 1 on Xu
+    - E[W_next] <= W - epsbar on Psi
+
+frozen_inputs:
+  identical_to_G10_and_G10R: true
+  model_decision_ids:
+    - M1_STOCHASTIC_SINGLE_INTEGRATOR_2D
+    - S1_DT005_SPEED_DISK05_NO_POST_CLIP
+    - P1_CONSERVATIVE_INFLATED_AABB
+    - D1_COMPACT_ROBUST_FORWARD_INVARIANT
+    - N1_IID_SYMMETRIC_TRIANGULAR_5MM
+  controller_id: CBF_ROVER_C2_LOWER_ROUTE_V1
+  controller_content_sha256: b0cacedfcd4b884961a786b24e84b2f0f33bbc4ac81aef0b1ff1b0dcfe285984
+  controller_file_sha256: df0dbfd2cc5b3aa0a049b5dbb6e7d0360c6b260801e183e95acfb7a9bccf715d
+  runtime_mode: monitor_only
+  certificate_evaluator_modifies_action: false
+
+synthesis:
+  id: G10A_V3_ACTIVE_BERNSTEIN_CUT_LP_V1
+  route: independent_fallback_beside_G10_G10R
+  single_global_barrier: true
+  barrier_basis: normalized_total_degree_tensor_chebyshev
+  barrier_coefficient_bounds: [-1000.0, 1000.0]
+  objective: maximize_common_rho_on_active_diagnostic_rows
+  rho_bounds: [-1.0, 1.0]
+  q:
+    decimal: 0.09999999999999999
+    float64_hex: 0x1.9999999999999p-4
+    exact_binary64_is_no_greater_than_one_tenth: true
+  epsbar:
+    decimal: 0.000001
+    float64_hex: 0x1.0c6f7a0b5ed8dp-20
+    semantics: exact_binary64_artifact_value
+  G9:
+    role: diagnostic_seed_and_row_ranking_only
+    formal_claim_allowed: false
+    accepted_legacy_input_kind: g10a_g9_seed_bundle
+    bundle_report_content_sha256_must_be_current_canonical: true
+    source_probe_must_be_hash_bound_sibling: true
+    legacy_probe_kind: w14_chebyshev_dense_positive_margin_probe
+    legacy_probe_degree: 14
+    legacy_declared_and_current_recomputed_hash_mismatch_recorded: true
+    direct_noncanonical_legacy_probe_accepted: false
+    catalog_exact_dyadic_depth: 3
+    one_anchor_point_per_V3_qsbc_family: true
+    dormant_point_rows_added_per_outer: 12
+  V3_feedback:
+    proof_route_id: G10A_V3_EXACT_BOX_FEEDBACK_V1
+    accepted_tree_dispositions: [proved_violation, unresolved]
+    source_geometry: exact_rational_box_exact
+    LP_endpoint_conversion: exact_strings_retained_then_binary64_candidate_rows
+    row_type: all_Bernstein_coefficients_of_original_residual
+    common_rho_read_by_feedback_rows: false
+    numeric_tightening: 1.0e-8
+    boundary_leaf_policy: conservative_full_leaf_box
+    controller_geometry_or_scalar_failure: fail_closed
+  solver:
+    preferred: highspy_incremental_rows_basis
+    public_API: addRows
+    addRows_start_array_entries: one_per_new_row
+    presolve_after_first_row_add: false
+    highs_run_clock_semantics: cumulative
+    highs_time_limit_semantics: current_run_time_plus_delegated_wall_budget
+    fallback: scipy_highs_deterministic_sparse_CSR_rebuild
+    fallback_after_first_API_error_is_permanent: true
+    failed_highspy_elapsed_is_subtracted_before_fallback: true
+    aggregate_LP_wall_budget_exceeded_discards_candidate: true
+    primal_feasibility_tolerance: 1.0e-9
+    dual_feasibility_tolerance: 1.0e-9
+    solver_result_is_formal_evidence: false
+  finite_schedule:
+    - stage_id: W16_ACTIVE
+      barrier_degree: 16
+      max_outer_iterations: 12
+      max_V3_calls: 3
+      aggregate_LP_time_limit_s: 3600
+    - stage_id: W18_ACTIVE
+      barrier_degree: 18
+      max_outer_iterations: 16
+      max_V3_calls: 4
+      aggregate_LP_time_limit_s: 7200
+    - stage_id: W20_ACTIVE
+      barrier_degree: 20
+      max_outer_iterations: 20
+      max_V3_calls: 5
+      aggregate_LP_time_limit_s: 10800
+  V3_checkpoint_period_outer_iterations: 4
+  positive_rho_required_for_V3: false
+  rationale: active_rows_are_partial_and_may_be_conservative_V3_is_authoritative
+  escalation_beyond_schedule_allowed: false
+  all_stages_fail_status: not_ready
+
+independent_validation:
+  identical_validator_to_G10_and_G10R: true
+  id: G5_EXACT_RATIONAL_BERNSTEIN_REPLAY_V3
+  report_schema_version: 2
+  acceptance_tolerance: 0.0
+  reads_solver_status: false
+  reads_G9_seed: false
+  reads_active_LP_rows: false
+  reconstructs_original_G4_polynomials: true
+  replays_controller_S1_and_D1: true
+  report_tree_barrier_controller_q_eps_hashes_cross_bound: true
+  controller_constraint_family_count: 15
+  controller_constraint_names_must_match_frozen_controller_exactly: true
+  formal_model_payload_must_equal_current_canonical_contract: true
+  unknown: fail_closed
+
+acceptance:
+  ready:
+    - V3 status == validated
+    - V3 first_slice_ready == true
+    - exact_binary64(q) <= 1/10
+    - exact_binary64(epsbar) > 0
+    - every V3 report and tree binding passes
+  first_validated_candidate_stops_schedule: true
+  no_G9_or_LP_result_is_formal_evidence: true

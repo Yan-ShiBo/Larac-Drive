@@ -1,0 +1,77 @@
+schema_version: 2
+kind: frozen_polynomial_controller_schema_union
+loader: cbf_rover.methods.polynomial_sbc.polynomial.load_frozen_controller
+
+common_required:
+  - schema_version
+  - kind
+  - controller_id
+  - semantics
+  - normalization
+  - construction
+  - content_sha256
+
+variants:
+  global_polynomial:
+    artifact_schema_version: 1
+    kind: frozen_polynomial_controller
+    implementation: cbf_rover.methods.polynomial_sbc.polynomial.FrozenPolynomialController
+    required:
+      - u_x
+      - u_y
+      - upstream_checkpoint_sha256
+    status: legacy_PB1_compatible
+  piecewise_polynomial:
+    artifact_schema_version: 2
+    kind: frozen_piecewise_polynomial_controller
+    implementation: cbf_rover.methods.polynomial_sbc.polynomial.FrozenPiecewisePolynomialController
+    required:
+      - pieces
+      - construction_source_sha256
+    partition:
+      variable: x_m
+      intervals: ordered_closed_adjacent
+      runtime_shared_boundary: first_matching_piece
+      formal_shared_boundary: validate_both_adjacent_closures
+    status: active_C2
+
+fixed_semantics:
+  state_order: [x_m, y_m]
+  action_order: [u_x_mps, u_y_mps]
+  frame_id: world
+  runtime_mode: monitor_only
+  post_controller_clipping_allowed: false
+
+normalization:
+  xi_x: (x_m-1.5)/2.5
+  xi_y: y_m/2.0
+
+axis_polynomial:
+  variable_order: [xi_x, xi_y]
+  support_identity: exponent_pairs
+  coefficients:
+    required_encodings:
+      - decimal
+      - float64_hex
+    encodings_must_agree: true
+
+provenance:
+  digest_format: 64_lowercase_hex
+  active_C2_required_decision_ids:
+    - DX1_PB1_STRUCTURAL_MISMATCH_DIAGNOSTIC_V1
+    - C2_FIXED_LOWER_PIECEWISE_POLYNOMIAL_V1
+    - C2V1_PIECEWISE_BERNSTEIN_AND_1000_ROLLOUTS
+    - C1_FREEZE_CONTROLLER_THEN_CERTIFY
+
+freeze_gate:
+  global_required_validation: CV1_BERNSTEIN_GLOBAL_AND_1000_ROLLOUTS
+  piecewise_required_validation: C2V1_PIECEWISE_BERNSTEIN_AND_1000_ROLLOUTS
+  unknown: fail_closed
+
+integrity:
+  canonical_json:
+    sort_keys: true
+    separators: [",", ":"]
+    allow_nan: false
+    encoding: UTF-8
+  content_sha256_covers_all_fields_except_itself: true

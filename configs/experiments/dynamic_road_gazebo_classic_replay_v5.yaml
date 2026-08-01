@@ -1,0 +1,47 @@
+schema_version: 1
+kind: dynamic_road_gazebo_classic_replay_validation_spec
+
+experiment:
+  id: GZ2_DYNAMIC_ROAD_LIVE_DISPLAY_REPLAY_VALIDATION_V5
+  phase: validation
+  bound_run_experiment_id: GZ2_DYNAMIC_ROAD_LIFTED_CBF_LIVE_DISPLAY_V9
+  claim_class: empirical_gazebo_classic_live_display_repeatability
+
+inputs:
+  required_run_count: 2
+  require_distinct_result_directories: true
+  require_valid_manifest_content_hash: true
+  require_valid_referenced_file_hashes: true
+
+identity:
+  require_same_config_file_sha256: true
+  require_same_base_differential_config_file_sha256: true
+  require_same_scenario_id: true
+  require_same_seed: true
+  require_same_obstacle_plan_content_sha256: true
+  require_same_world_file_sha256: true
+  require_same_runtime_contract: true
+
+acceptance:
+  require_each_run_provisional_success: true
+  require_each_run_all_gates: true
+  require_each_run_goal_reached: true
+  maximum_transition_count_difference: 2
+  maximum_simulated_duration_difference_s: 0.10
+  maximum_final_center_position_difference_m: 0.05
+  maximum_final_heading_difference_rad: 0.10
+
+trace_policy:
+  require_same_trace_sha256: false
+  rationale: Gazebo_Classic_ODE_is_empirical_and_byte_identical_trace_replay_is_not_a_formal_contract
+
+claims:
+  online_distance_cbf: timestamp_aligned_measured_state_runtime_evidence_only
+  bridge_startup_completion: direct_bootstrap_timestamped_pose_iteration_without_world_stats_gate
+  bridge_step_completion: direct_timestamped_pose_iteration_without_world_stats_gate
+  live_display: observer_only_runtime_visualization
+  differential_drive_tracking: empirical_gazebo_classic_ode
+  replay_acceptance: bounded_repeatability_not_bitwise_determinism
+  q_sbc_probability_bound: not_claimed
+  ros2_result: not_claimed
+  real_vehicle_claim: forbidden

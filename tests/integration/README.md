@@ -4,7 +4,7 @@
 
 计划覆盖：
 
-- 通过 `CBF_ROVER_ARTIFACT_ROOT` 注入并校验五个外部模型工件；
+- 通过项目内 `artifacts/payloads/`（`CBF_ROVER_ARTIFACT_ROOT`）注入并校验五个模型工件；
 - 缺失、哈希不匹配或接口不兼容的工件必须 fail closed；
 - 数据集适配器、训练入口、检查点加载、episode runner 和遥测记录的端到端契约；
 - 固定场景、固定随机种子与完整日志下的可复现实验。

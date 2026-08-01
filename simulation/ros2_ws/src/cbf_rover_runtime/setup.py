@@ -13,7 +13,10 @@ setup(
         ("share/ament_index/resource_index/packages", ["resource/" + package_name]),
         ("share/" + package_name, ["package.xml", "README.md"]),
         ("share/" + package_name + "/launch", glob("launch/*.launch.py")),
-        ("share/" + package_name + "/config", glob("config/*.yaml")),
+        (
+            "share/" + package_name + "/config",
+            glob("config/*.yaml") + glob("config/*.rviz"),
+        ),
     ],
     install_requires=["setuptools"],
     zip_safe=True,
@@ -26,6 +29,14 @@ setup(
             (
                 "external_command_relay = "
                 "cbf_rover_runtime.external_command_relay:main"
+            ),
+            (
+                "polynomial_tracker = "
+                "cbf_rover_runtime.polynomial_tracker:main"
+            ),
+            (
+                "scenario_visualizer = "
+                "cbf_rover_runtime.scenario_visualizer:main"
             ),
         ],
     },

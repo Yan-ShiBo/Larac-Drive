@@ -1,0 +1,56 @@
+Panels:
+  - Class: rviz_common/Displays
+    Name: Displays
+  - Class: rviz_common/Views
+    Name: Views
+Visualization Manager:
+  Class: ""
+  Displays:
+    - Alpha: 1
+      Class: rviz_default_plugins/Grid
+      Cell Size: 0.5
+      Name: Grid
+      Plane: XY
+      Value: true
+    - Class: rviz_default_plugins/RobotModel
+      Description Source: Topic
+      Description Topic:
+        Value: /robot_description
+      Name: Rover
+      Value: true
+    - Class: rviz_default_plugins/MarkerArray
+      Marker Topic:
+        Value: /cbf_rover/scenario/markers
+      Name: ScenarioSpec
+      Value: true
+    - Class: rviz_default_plugins/Marker
+      Marker Topic:
+        Value: /cbf_rover/certificate/marker
+      Name: Live q-SBC
+      Value: true
+    - Class: rviz_default_plugins/Odometry
+      Keep: 1000
+      Name: Rover path
+      Topic:
+        Value: /odom
+      Value: true
+  Enabled: true
+  Global Options:
+    Background Color: 22; 24; 30
+    Fixed Frame: odom
+    Frame Rate: 30
+  Name: root
+  Tools:
+    - Class: rviz_default_plugins/Interact
+    - Class: rviz_default_plugins/MoveCamera
+    - Class: rviz_default_plugins/Select
+  Views:
+    Current:
+      Class: rviz_default_plugins/TopDownOrtho
+      Name: Top Down
+      Scale: 80
+      X: 1.5
+      Y: 0
+Window Geometry:
+  Height: 900
+  Width: 1400

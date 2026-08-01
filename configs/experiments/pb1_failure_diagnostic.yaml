@@ -1,0 +1,36 @@
+schema_version: 1
+experiment_id: rover_first_pb1_failure_dx1
+decision_id: DX1_PB1_STRUCTURAL_MISMATCH_DIAGNOSTIC_V1
+claim_level: diagnostic_only
+
+inputs:
+  selection: frozen_v1_selection_manifest
+  checkpoint: frozen_v1_selected_checkpoint
+  pac_manifests:
+    - frozen_pb1_stage_1_manifest
+    - frozen_pb1_stage_2_manifest
+    - frozen_pb1_stage_3_manifest
+
+dense_polynomial_probe:
+  fit_dataset: pb1_stage_3_support_search
+  degrees: [1, 2, 3, 4, 5, 6]
+  evaluation_datasets:
+    - pb1_stage_1_support_selection
+    - pb1_stage_2_support_selection
+    - pb1_stage_3_support_selection
+  old_gate_mps: 0.05
+  output_is_controller_candidate: false
+
+reference_policy_probe:
+  grid_shape: [201, 161]
+  initial_disk_rollouts: 50
+  uniform_psi_rollouts: 100
+  max_steps: 2000
+  deterministic_actions: true
+
+forbidden_uses:
+  - changing_v1_selection
+  - establishing_a_pac_claim
+  - freezing_a_controller
+  - selecting_a_certificate
+  - claiming_safety

@@ -14,8 +14,19 @@ authors = [
 
 [project.scripts]
 cbf-rover = "cbf_rover.entrypoints.cli:main"
+cbf-rover-research = "cbf_rover.entrypoints.research:main"
 
 [project.optional-dependencies]
+research = [
+  "gymnasium>=1.0",
+  "matplotlib>=3.8",
+  "numpy>=2",
+  "Pillow>=10",
+  "PyYAML>=6",
+  "scipy>=1.13",
+  "stable-baselines3>=2.5",
+  "torch>=2.4",
+]
 learned-rgbd = [
   "h5py",
   "matplotlib",
@@ -26,6 +37,7 @@ learned-rgbd = [
   "torch",
 ]
 server-dev = [
+  "mosek>=11",
   "pytest",
   "ruff",
 ]
@@ -45,6 +57,7 @@ testpaths = [
 addopts = "-ra"
 markers = [
   "requires_original_archives: verifies the external immutable handover archive set",
+  "research_slow: runs the declared SAC, PAC, controller, or SDP research budget",
   "server_integration: requires server-side data, artifacts, or services",
   "ros2: requires the declared ROS2 and Gazebo server environment",
 ]

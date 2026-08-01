@@ -1,0 +1,149 @@
+schema_version: 1
+kind: dynamic_road_gazebo_classic_multiseed_experiment
+
+experiment:
+  id: GZ3_FORWARD_ONLY_LANE_MULTISEED_V2
+  status: frozen_before_execution
+  claim_class: empirical_gazebo_classic_stratified_geometry_validation
+
+bindings:
+  gazebo_episode_config: dynamic_road_gazebo_classic_v10.yaml
+
+repair_diagnostics:
+  required_before_catalog_execution: true
+  seeds: [7320014, 7320004]
+  source_failure_run: results_gazebo_multiseed_v1_discovery_v9_a0c93079
+  expected_prior_failure: safe_timeout
+
+catalog_provenance:
+  source_experiment_id: DR3_V3_MS2_MULTISEED_STRESS_V2
+  selection_rule: first_ascending_seed_per_lane_pattern
+  selection_uses_metrics_values: false
+  rationale: cover_every_5_bit_lane_pattern_without_selecting_on_control_outcomes
+
+seed_catalogs:
+  discovery:
+    purpose: forward_only_lane_gazebo_discovery
+    eligible_for_final_empirical_claim: false
+    source_episode_metrics_sha256: 0748e44621d62f52960f764a6fc4e1407757b771795b1aa082b57d29a4818e65
+    entries:
+      - {lane_pattern: "00000", seed: 7330037}
+      - {lane_pattern: "00001", seed: 7330004}
+      - {lane_pattern: "00010", seed: 7330002}
+      - {lane_pattern: "00011", seed: 7330063}
+      - {lane_pattern: "00100", seed: 7330032}
+      - {lane_pattern: "00101", seed: 7330021}
+      - {lane_pattern: "00110", seed: 7330084}
+      - {lane_pattern: "00111", seed: 7330017}
+      - {lane_pattern: "01000", seed: 7330068}
+      - {lane_pattern: "01001", seed: 7330026}
+      - {lane_pattern: "01010", seed: 7330028}
+      - {lane_pattern: "01011", seed: 7330022}
+      - {lane_pattern: "01100", seed: 7330010}
+      - {lane_pattern: "01101", seed: 7330082}
+      - {lane_pattern: "01110", seed: 7330091}
+      - {lane_pattern: "01111", seed: 7330007}
+      - {lane_pattern: "10000", seed: 7330012}
+      - {lane_pattern: "10001", seed: 7330009}
+      - {lane_pattern: "10010", seed: 7330016}
+      - {lane_pattern: "10011", seed: 7330006}
+      - {lane_pattern: "10100", seed: 7330001}
+      - {lane_pattern: "10101", seed: 7330000}
+      - {lane_pattern: "10110", seed: 7330018}
+      - {lane_pattern: "10111", seed: 7330043}
+      - {lane_pattern: "11000", seed: 7330011}
+      - {lane_pattern: "11001", seed: 7330025}
+      - {lane_pattern: "11010", seed: 7330042}
+      - {lane_pattern: "11011", seed: 7330003}
+      - {lane_pattern: "11100", seed: 7330029}
+      - {lane_pattern: "11101", seed: 7330020}
+      - {lane_pattern: "11110", seed: 7330005}
+      - {lane_pattern: "11111", seed: 7330015}
+
+  validation:
+    purpose: held_out_forward_only_lane_gazebo_validation
+    eligible_for_final_empirical_claim: true
+    source_episode_metrics_sha256: 604293e75ea4c29c684e74566a153aa785517051f41846c44a41a67691105517
+    entries:
+      - {lane_pattern: "00000", seed: 7331024}
+      - {lane_pattern: "00001", seed: 7331132}
+      - {lane_pattern: "00010", seed: 7331006}
+      - {lane_pattern: "00011", seed: 7331008}
+      - {lane_pattern: "00100", seed: 7331022}
+      - {lane_pattern: "00101", seed: 7331009}
+      - {lane_pattern: "00110", seed: 7331040}
+      - {lane_pattern: "00111", seed: 7331050}
+      - {lane_pattern: "01000", seed: 7331027}
+      - {lane_pattern: "01001", seed: 7331000}
+      - {lane_pattern: "01010", seed: 7331032}
+      - {lane_pattern: "01011", seed: 7331005}
+      - {lane_pattern: "01100", seed: 7331035}
+      - {lane_pattern: "01101", seed: 7331003}
+      - {lane_pattern: "01110", seed: 7331012}
+      - {lane_pattern: "01111", seed: 7331015}
+      - {lane_pattern: "10000", seed: 7331013}
+      - {lane_pattern: "10001", seed: 7331033}
+      - {lane_pattern: "10010", seed: 7331021}
+      - {lane_pattern: "10011", seed: 7331007}
+      - {lane_pattern: "10100", seed: 7331017}
+      - {lane_pattern: "10101", seed: 7331037}
+      - {lane_pattern: "10110", seed: 7331011}
+      - {lane_pattern: "10111", seed: 7331002}
+      - {lane_pattern: "11000", seed: 7331004}
+      - {lane_pattern: "11001", seed: 7331051}
+      - {lane_pattern: "11010", seed: 7331044}
+      - {lane_pattern: "11011", seed: 7331026}
+      - {lane_pattern: "11100", seed: 7331036}
+      - {lane_pattern: "11101", seed: 7331072}
+      - {lane_pattern: "11110", seed: 7331001}
+      - {lane_pattern: "11111", seed: 7331100}
+
+execution:
+  order: ascending_lane_pattern
+  parallelism: 1
+  progress_interval_episodes: 1
+  per_episode_wall_clock_pacing: true
+  live_display_during_episode: true
+  render_during_batch: false
+  hard_timeout_s: 2400
+  silent_retry_allowed: false
+
+acceptance:
+  required_success_rate: 1.0
+  maximum_collision_episodes: 0
+  maximum_road_departure_episodes: 0
+  maximum_timeout_episodes: 0
+  minimum_lifted_certificate_barrier_m: -1.0e-9
+  minimum_cbf_constraint_residual_mps: -1.0e-9
+  minimum_measured_contraction_residual_m: -1.0e-9
+  maximum_mapping_residual_mps: 1.0e-12
+  maximum_position_tracking_residual_m: 0.04
+  maximum_heading_tracking_residual_rad: 0.10
+  maximum_absolute_roll_rad: 0.05
+  maximum_absolute_pitch_rad: 0.05
+  maximum_linear_speed_mps: 0.5000000001
+  maximum_absolute_angular_speed_radps: 1.5000000001
+  minimum_achieved_realtime_factor: 0.95
+  maximum_achieved_realtime_factor: 1.01
+  required_lane_pattern_count: 32
+  require_no_post_projection_command_clipping: true
+  require_live_display_each_episode: true
+  require_wall_clock_pacing_each_episode: true
+
+independent_replay:
+  policy: rerun_selected_worst_validation_member_after_batch
+  selection_metric: maximum_position_tracking_residual_m
+  replay_config: dynamic_road_gazebo_classic_replay_v6.yaml
+  selection_is_post_hoc_diagnostic_only: true
+
+claims:
+  gazebo_batch: empirical_finite_catalog_only
+  catalog_selection: lane_pattern_stratified_without_outcome_metrics
+  lane_selection: passed_obstacles_excluded_from_nominal_route_decisions
+  live_display: observer_only_runtime_visualization_each_episode
+  differential_drive_tracking: empirical_gazebo_classic_ode
+  tracking_error_bound: empirical_confirmation_envelope_only
+  sampling_probability_bound: not_claimed
+  random_geometry_q_sbc: not_claimed
+  ros2_result: not_claimed
+  real_vehicle_claim: forbidden

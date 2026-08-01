@@ -1,10 +1,12 @@
 # 制品治理
 
-`artifacts/` 保存制品清单和模式，不保存大模型权重、求解器临时文件或实验结果。
-活动二进制文件必须位于仓库外，并通过不可变 URI、字节数和 SHA-256 绑定。
+`artifacts/` 保存制品清单和模式。大模型权重放在项目内、Git 忽略的
+`artifacts/payloads/`；求解器临时文件和实验结果放在项目内、Git 忽略的 `runs/`。
+活动二进制文件必须通过项目内相对路径、字节数和 SHA-256 绑定。
 
 | 目录 | 内容 | 当前状态 |
 |---|---|---|
+| [`controllers/`](controllers/) | 冻结全局/分段多项式 controller 的语义、系数和来源协议 | C2 候选待服务器验证 |
 | [`certificates/`](certificates/) | 数学证书制品模式、假设、兼容哈希和独立验证记录 | 没有现有证书 |
 | [`models/`](models/) | learned RGB-D 外部模型身份、来源和加载兼容性 | 五个槽位均 `missing` |
 

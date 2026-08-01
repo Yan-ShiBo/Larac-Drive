@@ -1,0 +1,26 @@
+schema_version: 1
+experiment_id: rover_first_qsbc_expressivity_dx2
+decision_id: DX2_SAMPLED_QSBC_EXPRESSIVITY_LP_V1
+claim_level: diagnostic_only
+
+inputs:
+  controller: frozen_C2V1_controller
+  system: M1_STOCHASTIC_SINGLE_INTEGRATOR_2D
+  noise: N1_IID_SYMMETRIC_TRIANGULAR_5MM
+
+sampled_lp:
+  W_degree_schedule: [4, 6, 8, 10, 12]
+  epsbar_schedule: [0.0, 0.000001]
+  coefficient_bounds: [-1000.0, 1000.0]
+  objective: minimize_q
+  requested_grid: [101, 81]
+  includes_all_formal_geometry_and_controller_breaks: true
+  solver: SciPy_HiGHS
+  time_limit_s_per_lp: 300
+
+forbidden_uses:
+  - publishing_a_certificate
+  - runtime_loading_of_diagnostic_W
+  - claiming_global_constraint_validity
+  - changing_the_frozen_controller
+  - replacing_independent_Bernstein_replay

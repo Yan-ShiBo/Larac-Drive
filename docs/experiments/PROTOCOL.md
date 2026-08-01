@@ -41,6 +41,12 @@ ScenarioSpec
 Gazebo `base.world` 只提供地面和太阳。障碍不得重新硬编码在 world、launch 或
 spawner 默认参数中。
 
+动态公路实验使用另一份独立真源：
+[`dynamic_road_random_obstacles.yaml`](../../configs/scenarios/dynamic_road_random_obstacles.yaml)。
+它不替换静态 P1/D1，也不继承静态 q-SBC。随机障碍的完整隐藏计划由 seed
+一次性生成并绑定哈希；障碍进入声明的感知距离后才成为在线 CBF 约束和可视化
+对象。
+
 ## 运行模式
 
 目标应用支持三类职责明确的模式：
@@ -52,12 +58,23 @@ spawner 默认参数中。
 | filtered | modifier 提出动作，guard 审查 | 每步评估并记录 | 闭环干预 |
 | replay | 不执行环境动作 | 重放相同 evaluator | 离线审计 |
 
-当前 `application/episode_runner.py` 只具备 unmodified 和带 modifier 的有界 episode
-骨架；完整 monitor-only evaluator、replay、ScenarioSpec resolver 和
-ExecutionGuard 仍需后续实现。文档不会把骨架描述为已完成能力。
+`application/episode_runner.py` 仍只负责 unmodified 和带 modifier 的有界 episode
+骨架。M1 exact 的 monitor-only evaluator、逐步 trace、certificate replay 和
+ScenarioSpec resolver 已由专用入口实现；ROS2 composition 与 RViz marker 代码也
+已接入，但尚未在具备 ROS2 Humble 的服务器验证。通用 ExecutionGuard 仍需后续
+实现，文档不会把未验证的 ROS2 路径描述为已通过。
 
 modifier 报告 `feasible: false` 时必须在调用 environment 前停止。未来 fallback
 只能来自明确 guard policy；零动作不是默认安全策略。
+
+动态公路入口属于 `filtered`：nominal 双车道控制器先给出圆盘内动作，在线距离
+CBF 再求半空间与 S1 速度圆盘交集上的最小改变量。求解不可行时立即以
+`cbf_action_set_infeasible` 结束，不进行 clipping、零动作 fallback 或静默重试。
+
+动态公路的多 seed 实验必须把开发发现集与 held-out 验证集分开。批量统计只保存
+成功 episode 的确定性摘要与 trace 哈希，失败 episode 额外保存完整 trace。验证
+开始后若修改 controller、CBF、场景或执行语义，该验证结果立即失效，必须换用新
+的 held-out seed 目录。
 
 ## Exact 与 Gazebo
 
@@ -117,7 +134,8 @@ exact 或 Gazebo 成功运行都不自动产生 formal claim。
 - 命令、标准输出和标准错误；
 - 逐步 trace、episode 汇总、聚合表和图。
 
-输出位于仓库外 `CBF_ROVER_RUN_ROOT`。聚合结果必须可回溯到原始 trace。
+本地输出位于项目内 `runs/`（`CBF_ROVER_RUN_ROOT`）。远程服务器结果需同步回该目录；
+聚合结果必须可回溯到原始 trace。
 
 ## Learned 对照
 

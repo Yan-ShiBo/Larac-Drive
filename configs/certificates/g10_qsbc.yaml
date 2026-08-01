@@ -1,0 +1,103 @@
+schema_version: 1
+kind: certificate_synthesis_spec
+id: G4_G10_QSBC_V1
+
+theorem:
+  id: G4_QSBC_INFINITE_HORIZON_REACH_AVOID_V1
+  unchanged: true
+  obligations:
+    - W >= 0 on X
+    - W <= q on X0
+    - W >= 1 on Xu
+    - E[W_next] <= W - epsbar on Psi
+
+frozen_inputs:
+  model_decision_ids:
+    - M1_STOCHASTIC_SINGLE_INTEGRATOR_2D
+    - S1_DT005_SPEED_DISK05_NO_POST_CLIP
+    - P1_CONSERVATIVE_INFLATED_AABB
+    - D1_COMPACT_ROBUST_FORWARD_INVARIANT
+    - N1_IID_SYMMETRIC_TRIANGULAR_5MM
+  controller_id: CBF_ROVER_C2_LOWER_ROUTE_V1
+  controller_content_sha256: b0cacedfcd4b884961a786b24e84b2f0f33bbc4ac81aef0b1ff1b0dcfe285984
+  controller_file_sha256: df0dbfd2cc5b3aa0a049b5dbb6e7d0360c6b260801e183e95acfb7a9bccf715d
+  controller_decision_id: C2_FIXED_LOWER_PIECEWISE_POLYNOMIAL_V1
+  controller_validation_id: C2V1_PIECEWISE_BERNSTEIN_AND_1000_ROLLOUTS
+  runtime_mode: monitor_only
+  certificate_evaluator_modifies_action: false
+
+synthesis:
+  id: G10_CHEBYSHEV_POLYNOMIAL_MULTIPLIER_SPARSE_LP_V1
+  solver: SciPy_HiGHS
+  matrix_format: CSR
+  global_dense_matrix_allowed: false
+  objective: maximize_common_rho_with_q_fixed
+  rho_bounds: [-1.0, 1.0]
+  q:
+    decimal: 0.09999999999999999
+    float64_hex: 0x1.9999999999999p-4
+    exact_binary64_is_no_greater_than_one_tenth: true
+  epsbar:
+    decimal: 0.000001
+    float64_hex: 0x1.0c6f7a0b5ed8dp-20
+    semantics: exact_binary64_artifact_value
+  barrier_basis: normalized_total_degree_tensor_chebyshev
+  barrier_coefficient_bounds: [-1000.0, 1000.0]
+  local_multiplier_basis: tensor_bernstein
+  local_multiplier_coefficient_bounds: [0.0, 100000.0]
+  local_box_guards:
+    per_obligation: [normalized_x_guard, normalized_y_guard]
+    nonnegativity: nonnegative_tensor_bernstein_coefficients
+  semialgebraic_guards:
+    initial_disk: radius_squared_minus_distance_squared
+    goal_exterior: distance_squared_minus_radius_squared
+    nonnegativity: nonnegative_tensor_bernstein_coefficients
+  partition:
+    full_X_parts_per_axis: 4
+    base_drift_refinement_depth: 1
+    goal_boundary_refinement_depth: 2
+  highs:
+    presolve: true
+    primal_feasibility_tolerance: 1.0e-9
+    dual_feasibility_tolerance: 1.0e-9
+  finite_schedule:
+    - stage_id: W14_M2
+      barrier_degree: 14
+      multiplier_degree: 2
+      time_limit_s: 900
+    - stage_id: W16_M2
+      barrier_degree: 16
+      multiplier_degree: 2
+      time_limit_s: 3600
+    - stage_id: W16_M4
+      barrier_degree: 16
+      multiplier_degree: 4
+      time_limit_s: 7200
+  escalation_beyond_schedule_allowed: false
+  all_stages_fail_status: not_ready
+
+candidate_gate:
+  requires_positive_numeric_rho: true
+  solver_optimality_required_for_V3: false
+  formal_claim_before_V3: false
+
+independent_validation:
+  id: G5_EXACT_RATIONAL_BERNSTEIN_REPLAY_V3
+  report_schema_version: 2
+  acceptance_tolerance: 0.0
+  reads_solver_status: false
+  reads_LP_matrix: false
+  reads_multiplier_values: false
+  reconstructs_original_G4_polynomials: true
+  replays_controller_S1_and_D1: true
+  report_binds_barrier_payload_sha256: true
+  report_binds_proof_tree_file_sha256: true
+  unknown: fail_closed
+
+acceptance:
+  ready:
+    - V3 status == validated
+    - V3 first_slice_ready == true
+    - exact_binary64(q) <= 1/10
+    - exact_binary64(epsbar) > 0
+  no_sampled_G9_result_is_formal_evidence: true

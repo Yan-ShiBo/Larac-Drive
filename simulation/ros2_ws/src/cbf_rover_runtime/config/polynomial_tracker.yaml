@@ -1,0 +1,16 @@
+polynomial_tracker:
+  ros__parameters:
+    controller_path: ""
+    certificate_path: ""
+    odometry_topic: /odom
+    command_topic: /cmd_vel
+    barrier_topic: /cbf_rover/barrier_value
+    certificate_facts_topic: /cbf_rover/certificate/facts
+    certificate_identity_topic: /cbf_rover/certificate/identity
+    certificate_marker_topic: /cbf_rover/certificate/marker
+    expected_odometry_frame: odom
+    odom_is_world_identity: true
+    heading_gain: 2.0
+    max_linear_mps: 0.5
+    max_angular_radps: 1.5
+    stale_timeout_s: 0.15
