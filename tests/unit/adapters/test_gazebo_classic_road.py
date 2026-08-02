@@ -1,13 +1,20 @@
 from __future__ import annotations
 
+import csv
 from pathlib import Path
 from xml.etree import ElementTree
 
 import pytest
+from PIL import Image
 
+from cbf_rover.adapters.exact.differential_road_render import (
+    render_differential_road_animation,
+)
 from cbf_rover.adapters.exact.road_contract import (
+    file_sha256,
     generate_seeded_road_scenario,
 )
+from cbf_rover.adapters.exact.dynamic_road import write_trajectory_csv
 from cbf_rover.adapters.gazebo.classic_bridge import (
     GazeboClassicSession,
     GazeboClassicState,
@@ -16,6 +23,7 @@ from cbf_rover.adapters.gazebo.classic_bridge import (
 from cbf_rover.adapters.gazebo.differential_road import (
     _gazebo_acceptance,
     _start_gazebo_session_with_attempts,
+    _trajectory_telemetry,
     gazebo_differential_road_metrics,
     run_gazebo_differential_road_episode,
 )
@@ -44,6 +52,9 @@ CONFIG_V14 = (
 )
 CONFIG_V15 = (
     ROOT / "configs/experiments/dynamic_road_gazebo_classic_v15.yaml"
+)
+CONFIG_V16 = (
+    ROOT / "configs/experiments/dynamic_road_gazebo_classic_v16.yaml"
 )
 
 
@@ -214,12 +225,30 @@ def test_v12_startup_retries_are_bounded_and_pre_control_only(
         lambda _: None,
     )
 
+    camera_source = tmp_path / "camera_raw" / "front_camera.bmp"
+    camera_queue = camera_source.parent / "queue"
+    camera_queue.mkdir(parents=True)
+    camera_source.write_bytes(b"failed-attempt latest frame")
+    camera_source.with_name("front_camera.bmp.tmp").write_bytes(
+        b"failed-attempt latest writer buffer"
+    )
+    (camera_queue / "frame_000000001.bmp").write_bytes(
+        b"failed-attempt complete queued frame"
+    )
+    (camera_queue / "frame_000000002.bmp.tmp").write_bytes(
+        b"failed-attempt queued writer buffer"
+    )
+    unrelated = camera_queue / "observer_notes.tmp"
+    unrelated.write_bytes(b"must remain fail-closed")
+
     session, records = _start_gazebo_session_with_attempts(
         contract=contract,
         world_path=tmp_path / "world.sdf",
         bridge_path=tmp_path / "bridge",
         destination=tmp_path,
         gzserver_binary="gzserver",
+        camera_source_path=camera_source,
+        camera_queue_directory=camera_queue,
     )
 
     assert contract.runtime.startup_attempt_limit == 3
@@ -233,6 +262,21 @@ def test_v12_startup_retries_are_bounded_and_pre_control_only(
         "ready",
     ]
     assert all(not record["control_frames_started"] for record in records)
+    residue = records[0]["camera_residue"]
+    assert residue["policy"] == (
+        "archive_exact_failed_attempt_camera_outputs_before_retry"
+    )
+    assert residue["archived_file_count"] == 4
+    assert residue["archived_temporary_file_count"] == 2
+    assert all(
+        (tmp_path / item["archive_file"]).is_file()
+        for item in residue["files"]
+    )
+    assert not camera_source.exists()
+    assert not camera_source.with_name("front_camera.bmp.tmp").exists()
+    assert not list(camera_queue.glob("frame_*.bmp"))
+    assert not list(camera_queue.glob("frame_*.bmp.tmp"))
+    assert unrelated.is_file()
     session.close()
 
 
@@ -309,6 +353,240 @@ def test_v15_adds_timestamped_video_without_changing_control_contract() -> None:
     assert v15.live_display.port == 11571
     assert v15.base.config_file_sha256 == v14.base.config_file_sha256
     assert v15.effective_lifted_cbf == v14.effective_lifted_cbf
+
+
+def test_v16_uses_sparse_obstacles_and_early_world_model_preview() -> None:
+    contract = load_gazebo_differential_road_contract(CONFIG_V16)
+    road = contract.base.base
+    sample = road.obstacle_sampling
+
+    assert sample.count == 3
+    assert min(
+        second - first
+        for first, second in zip(
+            sample.x_anchors_m,
+            sample.x_anchors_m[1:],
+        )
+    ) >= 3.0
+    assert sample.appearance_distance_range_m[0] >= 4.0
+    assert contract.base.nominal_controller.lane_switch_lookahead_m >= 3.8
+    assert contract.acceptance.required_obstacle_activations == 3
+    assert contract.live_display is not None
+    assert contract.live_display.preview_level_h_m == pytest.approx(0.30)
+
+
+def test_v16_rebuilds_world_model_and_starts_avoidance_before_h_equals_q() -> None:
+    contract = load_gazebo_differential_road_contract(CONFIG_V16)
+    scenario = generate_seeded_road_scenario(
+        contract.base.base,
+        seed=contract.default_seed,
+    )
+    rows, _ = run_gazebo_differential_road_episode(
+        contract=contract,
+        scenario=scenario,
+        stepper=ExactGazeboStepper(contract),
+        emit_console=False,
+    )
+
+    action_rows = [row for row in rows if row["action"] is not None]
+    assert action_rows
+    scenario_obstacles = {
+        obstacle.obstacle_id: obstacle for obstacle in scenario.obstacles
+    }
+    for row in action_rows:
+        world_model = row["world_model"]
+        solve = row["certificate"]["online_solve"]
+        level = row["certificate"]["display_level"]
+        obstacle_constraints = [
+            fact
+            for fact in row["certificate"]["constraints"]
+            if fact["barrier_kind"] == "obstacle"
+        ]
+
+        assert world_model["update_index"] == row["step_index"]
+        assert world_model["active_obstacle_ids"] == row["obstacles"][
+            "active_ids"
+        ]
+        assert [item["obstacle_id"] for item in world_model["obstacles"]] == (
+            row["obstacles"]["active_ids"]
+        )
+        for item in world_model["obstacles"]:
+            obstacle = scenario_obstacles[item["obstacle_id"]]
+            safety_radius = (
+                obstacle.certificate_radius_m
+                + contract.base.additional_body_inflation_m
+            )
+            assert item["center_m"] == pytest.approx(obstacle.center.as_tuple())
+            assert item["safety_boundary_radius_m"] == pytest.approx(
+                safety_radius
+            )
+            assert item["display_contour_radius_m"] == pytest.approx(
+                safety_radius + 0.30
+            )
+        assert world_model["rebuilt_from_measured_pose_each_step"] is True
+        assert world_model["gazebo_sim_time_s"] == pytest.approx(
+            row["state"]["gazebo_measurement"]["gazebo_sim_time_s"]
+        )
+        assert solve["step_index"] == row["step_index"]
+        assert solve["world_model_update_index"] == world_model["update_index"]
+        assert solve["solver"] == (
+            "exact_2d_projection_onto_halfspaces_intersect_l2_disk"
+        )
+        assert solve["status"] == "feasible_exact_projection"
+        assert solve["post_solve_clipping_applied"] is False
+        assert solve["active_obstacle_constraint_count"] == len(
+            obstacle_constraints
+        )
+        world_obstacles = {
+            item["obstacle_id"]: item
+            for item in world_model["obstacles"]
+        }
+        lookahead_x_m, lookahead_y_m = row["state"]["lookahead_point_m"]
+        filtered = row["action"]["filtered_lookahead"]
+        for fact in obstacle_constraints:
+            assert fact["barrier_id"].startswith("obstacle:")
+            obstacle_id = fact["barrier_id"].removeprefix("obstacle:")
+            item = world_obstacles[obstacle_id]
+            center_x_m, center_y_m = item["center_m"]
+            expected_barrier_m = (
+                (lookahead_x_m - center_x_m) ** 2
+                + (lookahead_y_m - center_y_m) ** 2
+            ) ** 0.5 - item["safety_boundary_radius_m"]
+            expected_residual_mps = (
+                fact["normal"][0] * filtered["u_x_mps"]
+                + fact["normal"][1] * filtered["u_y_mps"]
+                - fact["robust_rhs_mps"]
+            )
+            assert fact["barrier_m"] == pytest.approx(expected_barrier_m)
+            assert fact["constraint_residual_mps"] == pytest.approx(
+                expected_residual_mps
+            )
+        assert level == {
+            "symbol": "q_h",
+            "value_m": pytest.approx(0.30),
+            "level_set": "h_t(x) = q_h",
+            "safe_boundary": "h_t(x) = 0",
+            "semantics": "runtime_distance_cbf_level_not_qsbc_probability",
+            "observer_only": True,
+        }
+        assert row["certificate"]["q_sbc_probability_bound_claimed"] is False
+
+    initial_lane = 0
+    first_switch = next(
+        row
+        for row in action_rows
+        if row["planner"]["target_lane_index"] != initial_lane
+    )
+    active_barriers = [
+        fact["barrier_m"]
+        for fact in first_switch["certificate"]["constraints"]
+        if fact["barrier_kind"] == "obstacle"
+    ]
+    assert active_barriers
+    assert min(active_barriers) > 0.30
+    assert first_switch["action"]["nominal_lookahead"]["u_y_mps"] != 0.0
+    assert rows[-1]["termination_reason"] == "goal_reached"
+
+
+def test_v16_exports_full_rate_trajectory_csv(tmp_path: Path) -> None:
+    contract = load_gazebo_differential_road_contract(CONFIG_V16)
+    scenario = generate_seeded_road_scenario(
+        contract.base.base,
+        seed=contract.default_seed,
+    )
+    rows, _ = run_gazebo_differential_road_episode(
+        contract=contract,
+        scenario=scenario,
+        stepper=ExactGazeboStepper(contract),
+        emit_console=False,
+    )
+
+    trajectory_path = write_trajectory_csv(
+        tmp_path / "trajectory.csv",
+        rows,
+    )
+    with trajectory_path.open(encoding="utf-8", newline="") as stream:
+        records = list(csv.DictReader(stream))
+
+    assert len(records) == len(rows)
+    assert [int(record["step_index"]) for record in records] == list(
+        range(len(rows))
+    )
+    assert float(records[0]["x_m"]) == pytest.approx(
+        rows[0]["state"]["x_m"]
+    )
+    assert float(records[-1]["simulated_time_s"]) == pytest.approx(
+        rows[-1]["simulated_time_s"]
+    )
+    assert records[-1]["termination_reason"] == "goal_reached"
+    action_records = [
+        record for record in records if record["command_linear_mps"]
+    ]
+    assert action_records
+    assert all(
+        record["solve_status"] == "feasible_exact_projection"
+        for record in action_records
+    )
+    assert records[-1]["solve_status"] == "terminal_state_no_action"
+    assert {record["display_level_q_h_m"] for record in records} == {
+        "0.3"
+    }
+    telemetry = _trajectory_telemetry(
+        trajectory_path=trajectory_path,
+        trace_path=tmp_path / "live_trace.jsonl",
+        rows=rows,
+    )
+    assert telemetry["trajectory_file"] == "trajectory.csv"
+    assert telemetry["trajectory_file_sha256"] == file_sha256(
+        trajectory_path
+    )
+    assert telemetry["trajectory_format"] == (
+        "csv_full_rate_every_control_frame"
+    )
+    assert telemetry["trajectory_sample_count"] == len(rows)
+    assert telemetry["trajectory_source"] == "live_trace.jsonl"
+
+
+def test_v16_static_animation_draws_h_equals_q_contour(
+    tmp_path: Path,
+) -> None:
+    contract = load_gazebo_differential_road_contract(CONFIG_V16)
+    scenario = generate_seeded_road_scenario(
+        contract.base.base,
+        seed=contract.default_seed,
+    )
+    rows, _ = run_gazebo_differential_road_episode(
+        contract=contract,
+        scenario=scenario,
+        stepper=ExactGazeboStepper(contract),
+        emit_console=False,
+    )
+    gif_path = tmp_path / "trajectory.gif"
+    final_frame_path = tmp_path / "trajectory.png"
+
+    render_differential_road_animation(
+        rows,
+        scenario=scenario,
+        gif_path=gif_path,
+        final_frame_path=final_frame_path,
+        dt_s=contract.base.system.dt_s,
+        display_stride=len(rows),
+        title_backend="GAZEBO TEST",
+        title_claim="ONLINE DISTANCE CBF",
+    )
+
+    assert gif_path.is_file()
+    assert final_frame_path.is_file()
+    with Image.open(final_frame_path) as image:
+        cyan_pixels = [
+            pixel
+            for pixel in image.convert("RGB").get_flattened_data()
+            if all(
+                abs(channel - expected) <= 3
+                for channel, expected in zip(pixel, (67, 199, 217))
+            )
+        ]
+    assert cyan_pixels
 
 
 def test_v14_world_contains_room_and_front_rgb_sensor(tmp_path: Path) -> None:

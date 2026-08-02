@@ -100,7 +100,9 @@ the same seeded road in Gazebo Classic 11 ODE. The online CBF is reevaluated
 from the measured `[x, y, theta]` pose every `0.05 s`; all command bounds remain
 inside the action projection and the adapter applies no post-CBF clipping.
 
-- active continuous-camera recording contract:
+- active sparse-obstacle, early-avoidance, trajectory and `h=q_h` display contract:
+  [`dynamic_road_gazebo_classic_v16.yaml`](configs/experiments/dynamic_road_gazebo_classic_v16.yaml);
+- prior continuous-camera recording contract:
   [`dynamic_road_gazebo_classic_v15.yaml`](configs/experiments/dynamic_road_gazebo_classic_v15.yaml);
 - prior timestamp-aligned indoor-camera display contract:
   [`dynamic_road_gazebo_classic_v14.yaml`](configs/experiments/dynamic_road_gazebo_classic_v14.yaml);
@@ -114,8 +116,9 @@ inside the action projection and the adapter applies no post-CBF clipping.
   [`DYNAMIC_ROAD_GAZEBO_CLASSIC_CONTRACT.md`](docs/mathematics/DYNAMIC_ROAD_GAZEBO_CLASSIC_CONTRACT.md);
 - accepted server evidence:
   [`DYNAMIC_ROAD_GAZEBO_MULTISEED_V13_RUN_2026-07-31.md`](docs/experiments/DYNAMIC_ROAD_GAZEBO_MULTISEED_V13_RUN_2026-07-31.md),
-  [`INDOOR_ROOM_CAMERA_CERTIFICATE_V14_RUN_2026-08-01.md`](docs/experiments/INDOOR_ROOM_CAMERA_CERTIFICATE_V14_RUN_2026-08-01.md), and
-  [`INDOOR_ROOM_CAMERA_CERTIFICATE_VIDEO_V15_RUN_2026-08-01.md`](docs/experiments/INDOOR_ROOM_CAMERA_CERTIFICATE_VIDEO_V15_RUN_2026-08-01.md).
+  [`INDOOR_ROOM_CAMERA_CERTIFICATE_V14_RUN_2026-08-01.md`](docs/experiments/INDOOR_ROOM_CAMERA_CERTIFICATE_V14_RUN_2026-08-01.md),
+  [`INDOOR_ROOM_CAMERA_CERTIFICATE_VIDEO_V15_RUN_2026-08-01.md`](docs/experiments/INDOOR_ROOM_CAMERA_CERTIFICATE_VIDEO_V15_RUN_2026-08-01.md), and
+  [`INDOOR_SPARSE_REALTIME_CERTIFICATE_Q_LEVEL_V16_RUN_2026-08-01.md`](docs/experiments/INDOOR_SPARSE_REALTIME_CERTIFICATE_Q_LEVEL_V16_RUN_2026-08-01.md).
 
 Server commands:
 
@@ -126,7 +129,7 @@ cmake --build build/gazebo_classic_bridge --parallel
 
 PYTHONPATH=src python -m cbf_rover.entrypoints.research \
   simulate-gazebo-classic-road-cbf-live \
-  --config configs/experiments/dynamic_road_gazebo_classic_v15.yaml \
+  --config configs/experiments/dynamic_road_gazebo_classic_v16.yaml \
   --bridge-binary \
   build/gazebo_classic_bridge/cbf_rover_gazebo_classic_bridge \
   --output-dir /absolute/new/video-result/directory \
@@ -164,8 +167,8 @@ PYTHONPATH=src python -m cbf_rover.entrypoints.research \
   --output-dir /absolute/new/render/directory
 ```
 
-V15 uses loopback dashboard port `11571`; V14 retains `11471` for its frozen
-historical configuration.
+V16 uses loopback dashboard port `11671`; V15 and V14 retain `11571` and
+`11471` for their frozen historical configurations.
 
 V14 binds the dashboard to server loopback port `11471`. View it during the
 run through an SSH tunnel:
@@ -215,6 +218,24 @@ frames at `10 fps`, exactly `39.2 s`. All five certificate overlays remain
 visible, full GStreamer and OpenCV decoding pass, and the final frame displays
 `COMPLETED / goal_reached`. The earlier 410-frame, 41.0-second callback-count
 encoding remains diagnostic evidence and is not the final 1x artifact.
+
+V16 is the current single-run demonstration entry point. It reduces the road
+to three obstacles, reveals each obstacle about `4.1--4.3 m` ahead, begins the
+lane change with a `3.8 m` nominal lookahead, and rebuilds the active-obstacle
+world model from the measured Gazebo pose on every `0.05 s` control step. The
+full-rate `trajectory.csv` is written beside `live_trace.jsonl`. The dashboard
+and 1x camera video draw the amber control boundary `h=0` and a cyan preview
+level `h=q_h`, with `q_h=0.30 m`, while leaving the camera and road visible.
+
+Seed `7320014` reached the goal in `35.5 s`, activated `3/3` obstacles, recorded
+zero collisions and road departures, and passed all `36` episode gates. All
+`711` trace frames contain a same-step world-model update and online exact 2D
+action projection. The completed 1920x1080 video contains `355` frames at
+`10 fps`. See the
+[`V16 sparse real-time certificate report`](docs/experiments/INDOOR_SPARSE_REALTIME_CERTIFICATE_Q_LEVEL_V16_RUN_2026-08-01.md).
+Here `q_h` is a distance-CBF level in metres used by the observer overlay; it
+is not the dimensionless probability bound `q` of a formal q-SBC. The q-SBC
+claim remains `not_ready`.
 
 V8 retains V7's observer-only loopback dashboard and removes the low-frequency
 `world_stats` topic from the per-step synchronization path. The companion

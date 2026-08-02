@@ -138,6 +138,7 @@ _VIEWER_HTML = """<!doctype html>
         <canvas id="camera" width="960" height="540" role="img" aria-label="Gazebo front camera with active obstacle-certificate boundaries"></canvas>
       </div>
       <div class="camera-caption">
+        <span>Amber: h = 0 safety boundary · Cyan: h = q_h preview level</span>
         <span>琥珀虚线：当前激活的 lifted obstacle certificate</span>
         <span id="cameraState">WAITING FOR CAMERA</span>
       </div>
@@ -150,6 +151,7 @@ _VIEWER_HTML = """<!doctype html>
           <span><i class="dot" style="background:#43c7d9"></i>trajectory</span>
           <span><i class="dot" style="background:#ff5c4d"></i>obstacle</span>
           <span><i class="dot" style="background:#ffb000"></i>certificate</span>
+          <span><i class="dot" style="background:#43c7d9"></i>h = q_h preview</span>
         </div>
       </div>
       <details class="panel" id="telemetryDetails">
@@ -250,6 +252,31 @@ _VIEWER_HTML = """<!doctype html>
     const alignedBarriers = alignment.obstacle_barrier_m || {};
     snapshot.scenario.obstacles.filter((item) => activeIds.has(item.id)).forEach((obstacle) => {
       const samples = 96;
+      if (obstacle.display_level_q_h_m > 0) {
+        let previewDrawing = false;
+        context.beginPath();
+        for (let index = 0; index <= samples; index += 1) {
+          const angle = 2 * Math.PI * index / samples;
+          const point = projectCameraPoint(
+            snapshot,
+            obstacle.x_m + obstacle.contour_radius_m * Math.cos(angle),
+            obstacle.y_m + obstacle.contour_radius_m * Math.sin(angle),
+            0.021
+          );
+          if (!point) {
+            previewDrawing = false;
+            continue;
+          }
+          if (previewDrawing) context.lineTo(point[0], point[1]);
+          else context.moveTo(point[0], point[1]);
+          previewDrawing = true;
+        }
+        context.strokeStyle = "#43c7d9";
+        context.lineWidth = 3;
+        context.setLineDash([8, 7]);
+        context.stroke();
+        context.setLineDash([]);
+      }
       let drawing = false;
       context.beginPath();
       for (let index = 0; index <= samples; index += 1) {
@@ -380,6 +407,21 @@ _VIEWER_HTML = """<!doctype html>
       [5, 5]
     );
     snapshot.scenario.obstacles.filter((item) => item.active).forEach((obstacle) => {
+      if (obstacle.display_level_q_h_m > 0) {
+        context.beginPath();
+        context.strokeStyle = "#43c7d9";
+        context.lineWidth = 2.5;
+        context.setLineDash([4, 5]);
+        context.arc(
+          sx(obstacle.x_m),
+          sy(obstacle.y_m),
+          radius(obstacle.contour_radius_m),
+          0,
+          2 * Math.PI
+        );
+        context.stroke();
+        context.setLineDash([]);
+      }
       context.beginPath();
       context.strokeStyle = obstacle.barrier_m != null && obstacle.barrier_m < 0.10 ? "#f04438" : "#fdb022";
       context.lineWidth = 3;
@@ -680,6 +722,7 @@ class GazeboLiveDisplay:
         self._camera_recording_records: list[dict[str, Any]] = []
         self._camera_recording_manifest: dict[str, Any] | None = None
         self._camera_queue_consumed_frame_count = 0
+        self._camera_queue_discarded_temporary_file_count = 0
         self._camera_capture_simulated_time_s: float | None = None
         self._camera_first_capture_simulated_time_s: float | None = None
         self._camera_last_capture_simulated_time_s: float | None = None
@@ -806,6 +849,34 @@ class GazeboLiveDisplay:
             return
         self._publish_camera_frame()
 
+    def discard_incomplete_camera_writer_buffers(self) -> int:
+        """Remove unpublished queue writer buffers after Gazebo has stopped.
+
+        Only the queue's narrowly named ``frame_*.bmp.tmp`` buffers are
+        eligible. Completed ``.bmp`` frames remain available for the normal
+        drain and recording-closure checks.
+        """
+
+        if self._started_at_utc is None:
+            raise RuntimeError("live display has not started")
+        if self._closed:
+            raise RuntimeError("live display is already closed")
+        if self.camera_queue_directory is None:
+            return 0
+        discarded_count = 0
+        for temporary_path in sorted(
+            self.camera_queue_directory.glob("frame_*.bmp.tmp")
+        ):
+            if not temporary_path.is_file():
+                raise RuntimeError(
+                    "camera queue temporary buffer is not a regular file: "
+                    f"{temporary_path}"
+                )
+            temporary_path.unlink()
+            discarded_count += 1
+        self._camera_queue_discarded_temporary_file_count += discarded_count
+        return discarded_count
+
     def fail(self, error: BaseException) -> None:
         if self._started_at_utc is None or self._closed:
             return
@@ -883,6 +954,9 @@ class GazeboLiveDisplay:
                 "display_sink_action_modification": False,
                 "online_filter_precedes_display_observation": True,
                 "obstacle_display_policy": "visible_after_controller_activation",
+                "preview_level_set": (
+                    "distance_cbf_h_equals_q_h_not_qsbc_probability"
+                ),
                 "q_sbc_probability_claimed": False,
                 "front_camera_observer_only": True,
             },
@@ -1265,6 +1339,9 @@ class GazeboLiveDisplay:
             "camera_queue_has_no_temporary_files": (
                 not queued_temporary_files
             ),
+            "camera_queue_discarded_temporary_file_count_bounded": (
+                self._camera_queue_discarded_temporary_file_count <= 1
+            ),
         }
         mount = camera.pose_on_base_link
         manifest: dict[str, Any] = {
@@ -1284,6 +1361,9 @@ class GazeboLiveDisplay:
             "missing_frame_count": missing_frame_count,
             "camera_queue_consumed_frame_count": (
                 self._camera_queue_consumed_frame_count
+            ),
+            "camera_queue_discarded_temporary_file_count": (
+                self._camera_queue_discarded_temporary_file_count
             ),
             "camera_queue_remaining_frame_count": len(
                 queued_frames_remaining
@@ -1549,6 +1629,7 @@ class GazeboLiveDisplay:
             "additional_body_inflation_m": float(
                 frame["certificate"]["additional_body_inflation_m"]
             ),
+            "display_level": frame["certificate"].get("display_level"),
         }
 
     def _camera_manifest_payload(self) -> dict[str, Any]:
@@ -1649,9 +1730,13 @@ class GazeboLiveDisplay:
         active_ids: set[str] = set()
         barrier_by_id: dict[str, float] = {}
         inflation = 0.0
+        display_level_q_h_m = 0.0
         if frame is not None:
             active_ids = set(frame["obstacles"]["active_ids"])
             inflation = float(frame["certificate"]["additional_body_inflation_m"])
+            display_level = frame["certificate"].get("display_level")
+            if display_level is not None:
+                display_level_q_h_m = float(display_level["value_m"])
             barrier_by_id = {
                 str(item["barrier_id"]).split(":", 1)[1]: float(item["barrier_m"])
                 for item in frame["certificate"]["constraints"]
@@ -1664,6 +1749,16 @@ class GazeboLiveDisplay:
                 "y_m": obstacle.center.y_m,
                 "physical_radius_m": obstacle.physical_radius_m,
                 "lifted_radius_m": obstacle.certificate_radius_m + inflation,
+                "safety_boundary_radius_m": (
+                    obstacle.certificate_radius_m + inflation
+                ),
+                "display_level_q_h_m": display_level_q_h_m,
+                "contour_radius_m": (
+                    obstacle.certificate_radius_m
+                    + inflation
+                    + display_level_q_h_m
+                ),
+                "contour_semantics": "distance_cbf_h_equals_q_h",
                 "activation_x_m": obstacle.activation_x_m,
                 "active": obstacle.obstacle_id in active_ids,
                 "barrier_m": barrier_by_id.get(obstacle.obstacle_id),
@@ -1710,6 +1805,11 @@ class GazeboLiveDisplay:
                     certificate["minimum_realized_contraction_residual_m"]
                 ),
                 "constraints": list(certificate["constraints"]),
+                "display_level": (
+                    None
+                    if certificate.get("display_level") is None
+                    else dict(certificate["display_level"])
+                ),
                 "q_sbc_probability_bound_claimed": False,
             },
             "control": {

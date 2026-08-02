@@ -1,0 +1,151 @@
+schema_version: 1
+kind: dynamic_road_gazebo_classic_cbf_spec
+
+experiment:
+  id: GZ8_INDOOR_ROOM_SPARSE_REALTIME_CBF_Q_LEVEL_V16
+  phase: discovery
+  default_seed: 7320014
+  claim_class: empirical_gazebo_classic_sparse_realtime_certificate_video
+
+base_differential_config: dynamic_road_differential_v4.yaml
+
+gazebo_classic:
+  required_major_version: 11
+  physics_engine: ode
+  world_name: cbf_rover_sparse_certificate_world
+  model_name: cbf_rover
+  master_uri: http://127.0.0.1:11672
+  physics_step_s: 0.001
+  solver_iterations: 40
+  control_iterations_per_step: 50
+  startup_timeout_s: 120.0
+  startup_attempt_limit: 3
+  startup_retry_backoff_s: 1.0
+  state_timeout_s: 20.0
+  command_plugin: libDiffDrivePlugin.so
+  state_plugin: libcbf_rover_gazebo_state_plugin.so
+  plugin_angular_command_sign: -1.0
+  bridge_pose_world_timestamp_alignment: required
+  headless: true
+  headless_renderer: xvfb
+  paused_fixed_step: true
+  remote_model_database_allowed: false
+
+visual_scene:
+  layout: indoor_room
+  room_margin_x_m: 2.0
+  room_half_width_m: 3.5
+  wall_height_m: 1.4
+  wall_thickness_m: 0.12
+
+front_camera:
+  enabled: true
+  sensor_name: front_rgb
+  plugin: libcbf_rover_gazebo_camera_plugin.so
+  image_width: 960
+  image_height: 540
+  horizontal_fov_rad: 1.0471975511965976
+  update_rate_hz: 10.0
+  near_clip_m: 0.05
+  far_clip_m: 30.0
+  pose_on_base_link: [0.20, 0.0, 0.14, 0.0, 0.14, 0.0]
+  frame_file: front_camera.bmp
+  transport: atomic_bmp_with_embedded_gazebo_sim_timestamp_observer_only
+
+camera_recording:
+  enabled: true
+  capture_policy: every_unique_timestamp_aligned_camera_frame
+  archive_format: png_sequence_with_jsonl_index
+  playback_fps: 10.0
+  video_width: 1920
+  video_height: 1080
+  video_file: gazebo_front_camera_sparse_realtime_cbf_q_level_1x.mp4
+  encoder_backend: gstreamer_x264
+  bitrate_kbps: 6000
+  minimum_capture_coverage_ratio: 0.98
+  maximum_source_frame_gap_s: 0.50
+  minimum_overlay_visible_frame_count: 10
+  require_all_activated_obstacles_visible: true
+
+live_display:
+  enabled: true
+  bind_host: 127.0.0.1
+  port: 11671
+  display_stride: 4
+  refresh_interval_s: 0.20
+  wall_clock_paced: true
+  atomic_snapshot_updates: true
+  display_sink_control_feedback: false
+  obstacle_display_policy: visible_after_controller_activation
+  layout: camera_primary_map_secondary_telemetry_collapsed
+  camera_certificate_projection: timestamp_aligned_measured_pose_pinhole_ground_plane
+  preview_level_h_m: 0.30
+
+physical_rover:
+  base_size_m: [0.48, 0.38, 0.12]
+  base_mass_kg: 8.0
+  wheel_radius_m: 0.10
+  wheel_width_m: 0.05
+  wheel_mass_kg: 0.60
+  wheel_separation_m: 0.44
+  wheel_axle_x_m: 0.10
+  rear_caster_radius_m: 0.04
+  rear_caster_x_m: -0.19
+  conservative_disk_must_cover_body: true
+
+obstacle_projection:
+  geometry: physical_cylinder
+  spawn_policy: present_from_world_start
+  controller_activation: inherit_seeded_appearance_distance
+  inactive_obstacles_are_unknown_to_controller: true
+
+tracking_envelope:
+  source_experiment_id: GZ4_V12_DISCOVERY_SEED_7330000_TRACKING_CALIBRATION
+  source_trace_sha256: c34e1a76009c193c6e1603ab8b9feb7049b7c76cdc183c40c8fc0ea383091913
+  source_catalog_metrics_sha256: 48166004b9929443e777805f20a3c561ca3f878904159e0de8fd0e0328e68070
+  position_coordinate_half_width_m: 0.016
+  heading_error_bound_rad: 0.065
+  construction: inherited_from_V13_for_sparse_visual_observer_extension
+
+acceptance:
+  required_status: goal_reached
+  required_obstacle_activations: 3
+  maximum_collision_count: 0
+  maximum_road_departure_count: 0
+  minimum_lifted_certificate_barrier_m: -1.0e-9
+  minimum_cbf_constraint_residual_mps: -1.0e-9
+  minimum_measured_contraction_residual_m: -1.0e-9
+  maximum_mapping_residual_mps: 1.0e-12
+  maximum_position_tracking_residual_m: 0.016
+  maximum_heading_tracking_residual_rad: 0.065
+  maximum_absolute_roll_rad: 0.05
+  maximum_absolute_pitch_rad: 0.05
+  require_no_post_projection_command_clipping: true
+  require_isolated_master_uri: true
+  require_live_display_updates_during_episode: true
+  require_display_sink_control_feedback_false: true
+  require_front_camera_frames: true
+  minimum_front_camera_capture_coverage_ratio: 0.98
+  maximum_front_camera_alignment_error_s: 0.026
+  require_front_camera_activation_keyframes: true
+  require_front_camera_recording: true
+  require_front_camera_video: true
+
+claims:
+  online_distance_cbf: evaluated_from_timestamp_aligned_measured_gazebo_pose_each_control_step
+  online_world_model: active_obstacle_geometry_rebuilt_from_measured_pose_each_control_step
+  preview_level_set: h_equals_q_h_in_meters_observer_only
+  preview_level_q_h_is_qsbc_probability: false
+  indoor_room: visual_and_collision_shell_outside_frozen_road_domain
+  front_camera: actual_gazebo_rgb_sensor_frames_with_embedded_sim_timestamp
+  camera_recording: every_camera_callback_atomically_queued_then_archived_as_timestamped_png
+  camera_certificate_overlay: timestamp_aligned_measured_pose_pinhole_projection_observer_only
+  video: one_times_simulation_time_h264_mp4_with_camera_primary_dashboard
+  dashboard_layout: camera_primary_map_secondary_telemetry_collapsed
+  differential_drive_tracking: empirical_gazebo_classic_ode
+  tracking_error_bound: inherited_empirical_confirmation_envelope_only
+  stochastic_position_noise: not_injected_but_N1_support_retained_in_filter
+  random_geometry_q_sbc: not_claimed
+  q_sbc_certificate: not_ready
+  ros2_result: not_claimed
+  real_vehicle_claim: forbidden

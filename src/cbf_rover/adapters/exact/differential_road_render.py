@@ -38,6 +38,14 @@ def render_differential_road_animation(
     inflation = float(
         rows[0]["certificate"]["additional_body_inflation_m"]
     )
+    display_levels_h_m = {
+        float(level["value_m"])
+        for row in rows
+        if (level := row["certificate"].get("display_level")) is not None
+    }
+    if len(display_levels_h_m) > 1:
+        raise ValueError("display certificate level must remain constant")
+    display_level_h_m = next(iter(display_levels_h_m), 0.0)
     figure = plt.figure(figsize=(15.2, 7.8), facecolor="#0b1118")
     grid = figure.add_gridspec(
         2,
@@ -116,8 +124,8 @@ def render_differential_road_animation(
             alpha=0.25,
         )
 
-    obstacle_patches: dict[str, tuple[Any, Any, Any]] = {}
-    for obstacle in scenario.obstacles:
+    obstacle_patches: dict[str, tuple[Any, Any, Any, Any]] = {}
+    for obstacle_index, obstacle in enumerate(scenario.obstacles):
         physical = Circle(
             obstacle.center.as_tuple(),
             obstacle.physical_radius_m,
@@ -139,6 +147,22 @@ def render_differential_road_animation(
             visible=False,
             zorder=4,
         )
+        preview = Circle(
+            obstacle.center.as_tuple(),
+            obstacle.certificate_radius_m + inflation + display_level_h_m,
+            facecolor="none",
+            edgecolor="#43c7d9",
+            linewidth=1.8,
+            linestyle=(0, (3, 4)),
+            alpha=0.95,
+            visible=False,
+            zorder=3,
+            label=(
+                f"preview h = q_h = {display_level_h_m:.2f} m"
+                if obstacle_index == 0 and display_level_h_m > 0.0
+                else None
+            ),
+        )
         label = scene_axis.text(
             obstacle.center.x_m,
             (
@@ -155,11 +179,13 @@ def render_differential_road_animation(
             visible=False,
             zorder=6,
         )
+        scene_axis.add_patch(preview)
         scene_axis.add_patch(certificate)
         scene_axis.add_patch(physical)
         obstacle_patches[obstacle.obstacle_id] = (
             physical,
             certificate,
+            preview,
             label,
         )
 
@@ -304,6 +330,14 @@ def render_differential_road_animation(
         linewidth=1.4,
         label="lifted boundary h = 0",
     )
+    if display_level_h_m > 0.0:
+        barrier_axis.axhline(
+            display_level_h_m,
+            color="#43c7d9",
+            linestyle=(0, (3, 4)),
+            linewidth=1.4,
+            label=f"preview h = q_h = {display_level_h_m:.2f} m",
+        )
     barrier_line, = barrier_axis.plot(
         [],
         [],
@@ -419,9 +453,10 @@ def render_differential_road_animation(
         }
         for obstacle_id, patches in obstacle_patches.items():
             visible = obstacle_id in active_ids
-            physical, certificate, label = patches
+            physical, certificate, preview, label = patches
             physical.set_visible(visible)
             certificate.set_visible(visible)
+            preview.set_visible(visible and display_level_h_m > 0.0)
             label.set_visible(visible)
             if visible:
                 barrier = barrier_by_id[obstacle_id]
@@ -483,6 +518,7 @@ def render_differential_road_animation(
             f"lookahead ell={lookahead_distance:.2f} m\n"
             f"active obstacles={len(active_ids)}/{len(scenario.obstacles)}\n"
             f"min lifted h={barrier_values[frame_index]:.4f} m\n"
+            f"preview level q_h={display_level_h_m:.3f} m\n"
             f"realized contraction={contraction_text}\n"
             f"{command_text}\n"
             f"filter intervention={intervention:.4f} m/s\n"

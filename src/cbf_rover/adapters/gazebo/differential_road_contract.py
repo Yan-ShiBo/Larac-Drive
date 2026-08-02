@@ -130,6 +130,7 @@ class GazeboLiveDisplaySpec:
     obstacle_display_policy: str
     layout: str = "map_primary_telemetry_visible"
     camera_certificate_projection: str = "none"
+    preview_level_h_m: float = 0.0
 
     def __post_init__(self) -> None:
         if self.bind_host not in {"127.0.0.1", "localhost"}:
@@ -162,6 +163,12 @@ class GazeboLiveDisplaySpec:
             "timestamp_aligned_measured_pose_pinhole_ground_plane",
         }:
             raise ValueError("unexpected camera certificate projection")
+        preview_level = float(self.preview_level_h_m)
+        if not isfinite(preview_level) or preview_level < 0.0:
+            raise ValueError(
+                "live display preview certificate level must be finite and nonnegative"
+            )
+        object.__setattr__(self, "preview_level_h_m", preview_level)
 
 
 @dataclass(frozen=True, slots=True)
@@ -673,6 +680,9 @@ def load_gazebo_differential_road_contract(
                 live_display_payload.get(
                     "camera_certificate_projection", "none"
                 )
+            ),
+            preview_level_h_m=float(
+                live_display_payload.get("preview_level_h_m", 0.0)
             ),
         )
     )

@@ -19,6 +19,7 @@ _CAMERA_BOX = (32, 80, 1440, 872)
 _TOP_DOWN_BOX = (1472, 80, 1888, 496)
 _AMBER = (255, 176, 0)
 _DANGER = (255, 92, 77)
+_PREVIEW = (67, 199, 217)
 _DANGER_THRESHOLD_M = 0.10
 
 
@@ -96,6 +97,25 @@ def _positive_int(value: Any, *, label: str) -> int:
     if number <= 0 or float(value) != number:
         raise ValueError(f"{label} must be a positive integer")
     return number
+
+
+def _display_level_h_m(alignment: Mapping[str, Any]) -> float:
+    payload = alignment.get("display_level")
+    if payload is None:
+        return 0.0
+    level = _mapping(payload, label="alignment.display_level")
+    if level.get("symbol") != "q_h":
+        raise ValueError("alignment display level symbol must be q_h")
+    if level.get("semantics") != (
+        "runtime_distance_cbf_level_not_qsbc_probability"
+    ):
+        raise ValueError("unexpected alignment display level semantics")
+    if level.get("observer_only") is not True:
+        raise ValueError("alignment display level must be observer only")
+    value = _finite_float(level["value_m"], label="display_level.value_m")
+    if value < 0.0:
+        raise ValueError("alignment display level must be nonnegative")
+    return value
 
 
 def _inside_root(root: Path, candidate: Path, *, label: str) -> Path:
@@ -298,14 +318,13 @@ def _draw_camera_certificates(
     scale_x = image.width / source_width
     scale_y = image.height / source_height
     visible_ids: set[str] = set()
-    for obstacle_id in active_ids_value:
-        if obstacle_id not in obstacles:
-            raise ValueError(f"active obstacle is absent from scenario: {obstacle_id}")
-        obstacle = obstacles[obstacle_id]
-        radius = _positive_float(
-            obstacle["certificate_radius_m"],
-            label=f"scenario.obstacles[{obstacle_id}].certificate_radius_m",
-        ) + inflation
+
+    def circle_segments(
+        obstacle: Mapping[str, Any],
+        *,
+        radius_m: float,
+        world_z_m: float,
+    ) -> list[list[tuple[float, float]]]:
         projected: list[tuple[float, float]] = []
         segments: list[list[tuple[float, float]]] = []
         for sample in range(97):
@@ -314,10 +333,10 @@ def _draw_camera_certificates(
                 camera=camera,
                 state=state,
                 world_x_m=_finite_float(obstacle["x_m"], label="obstacle.x_m")
-                + radius * cos(angle),
+                + radius_m * cos(angle),
                 world_y_m=_finite_float(obstacle["y_m"], label="obstacle.y_m")
-                + radius * sin(angle),
-                world_z_m=0.018,
+                + radius_m * sin(angle),
+                world_z_m=world_z_m,
             )
             if point is None:
                 if len(projected) >= 2:
@@ -327,6 +346,22 @@ def _draw_camera_certificates(
             projected.append((point[0] * scale_x, point[1] * scale_y))
         if len(projected) >= 2:
             segments.append(projected)
+        return segments
+
+    display_level_h_m = _display_level_h_m(alignment)
+    for obstacle_id in active_ids_value:
+        if obstacle_id not in obstacles:
+            raise ValueError(f"active obstacle is absent from scenario: {obstacle_id}")
+        obstacle = obstacles[obstacle_id]
+        radius = _positive_float(
+            obstacle["certificate_radius_m"],
+            label=f"scenario.obstacles[{obstacle_id}].certificate_radius_m",
+        ) + inflation
+        segments = circle_segments(
+            obstacle,
+            radius_m=radius,
+            world_z_m=0.018,
+        )
         barrier_value = barriers.get(obstacle_id)
         barrier = None if barrier_value is None else _finite_float(
             barrier_value,
@@ -336,6 +371,26 @@ def _draw_camera_certificates(
         color = _DANGER if danger else _AMBER
         width = 8 if danger else 6
         visible = False
+        if display_level_h_m > 0.0:
+            preview_segments = circle_segments(
+                obstacle,
+                radius_m=radius + display_level_h_m,
+                world_z_m=0.021,
+            )
+            for segment in preview_segments:
+                segment_visible = _draw_dashed_polyline(
+                    draw,
+                    segment,
+                    fill=_PREVIEW,
+                    width=4,
+                    bounds=(
+                        0.0,
+                        0.0,
+                        float(image.width - 1),
+                        float(image.height - 1),
+                    ),
+                )
+                visible = segment_visible or visible
         for segment in segments:
             segment_visible = _draw_dashed_polyline(
                 draw,
@@ -486,6 +541,7 @@ def _draw_top_down(
         alignment["additional_body_inflation_m"],
         label="additional_body_inflation_m",
     )
+    display_level_h_m = _display_level_h_m(alignment)
     visible_ids: set[str] = set()
     for obstacle_id, obstacle in obstacles.items():
         center = point(
@@ -515,6 +571,21 @@ def _draw_top_down(
             )
             + inflation
         ) * scale
+        if display_level_h_m > 0.0:
+            preview_radius = certificate_radius + display_level_h_m * scale
+            preview_samples = [
+                (
+                    center[0] + preview_radius * cos(2.0 * pi * index / 64.0),
+                    center[1] + preview_radius * sin(2.0 * pi * index / 64.0),
+                )
+                for index in range(65)
+            ]
+            _draw_dashed_polyline(
+                draw,
+                preview_samples,
+                fill=_PREVIEW,
+                width=3,
+            )
         barrier_value = barriers.get(obstacle_id)
         barrier = None if barrier_value is None else _finite_float(
             barrier_value, label=f"obstacle_barrier_m.{obstacle_id}"
@@ -607,6 +678,7 @@ def _render_dashboard(
 
     alignment = _mapping(row["alignment"], label="index.alignment")
     active_ids = alignment["active_obstacle_ids"]
+    display_level_h_m = _display_level_h_m(alignment)
     simulated_time = _finite_float(
         row.get("playback_simulated_time_s", row["capture_simulated_time_s"]),
         label="playback_simulated_time_s",
@@ -631,7 +703,11 @@ def _render_dashboard(
     draw.text((1472, 770), str(len(active_ids)), fill=(238, 244, 242), font=_font(42, bold=True))
     draw.text(
         (32, 914),
-        "Amber dashed: active certificate     Red: h < 0.10 m",
+        (
+            "Amber: h=0 safety boundary     "
+            f"Cyan: h=q_h={display_level_h_m:.2f} m preview     "
+            "Red: h < 0.10 m"
+        ),
         fill=(182, 193, 192),
         font=_font(21),
     )
@@ -845,6 +921,13 @@ def render_camera_certificate_video(
         },
         "overlays": {
             "danger_threshold_m": _DANGER_THRESHOLD_M,
+            "display_level_q_h_m": None,
+            "preview_contour_semantics": (
+                "distance_cbf_h_equals_q_h_not_qsbc_probability"
+            ),
+            "preview_contour_radius_rule": (
+                "certificate_radius_m + additional_body_inflation_m + q_h_m"
+            ),
             "visible_frame_count": 0,
             "camera_visible_frame_count": 0,
             "obstacle_ids": [],
@@ -915,6 +998,7 @@ def render_camera_certificate_video(
             "timeline_duration_quantization_within_half_frame": False,
             "rendered_frame_count_matches": False,
             "rendered_frame_hashes_recorded": False,
+            "display_level_consistent": False,
             "active_obstacle_projection_only": False,
             "minimum_overlay_visible_frame_count": False,
             "all_activated_obstacles_visible": False,
@@ -1077,6 +1161,7 @@ def render_camera_certificate_video(
         source_frames: list[tuple[dict[str, Any], Path]] = []
         source_capture_times: list[float] = []
         source_activated_obstacle_ids: set[str] = set()
+        source_display_levels_h_m: set[float] = set()
         dimensions_valid = True
         for row_number, row in enumerate(rows, start=1):
             for required_key in (
@@ -1130,6 +1215,7 @@ def render_camera_certificate_video(
                     raise ValueError(
                         f"active obstacle is absent from scenario: {obstacle_id}"
                     )
+            source_display_levels_h_m.add(_display_level_h_m(alignment))
             source_capture_times.append(capture_time_s)
             source_activated_obstacle_ids.update(active_values)
             source_frames.append((row, source_frame))
@@ -1159,6 +1245,13 @@ def render_camera_certificate_video(
         manifest["overlays"]["source_activated_obstacle_ids"] = sorted(
             source_activated_obstacle_ids
         )
+        if len(source_display_levels_h_m) != 1:
+            raise ValueError(
+                "camera recording display level must be constant across frames"
+            )
+        display_level_h_m = next(iter(source_display_levels_h_m))
+        manifest["overlays"]["display_level_q_h_m"] = display_level_h_m
+        manifest["gates"]["display_level_consistent"] = True
 
         source_capture_times_ns = [
             int(round(value * 1_000_000_000.0))
@@ -1316,6 +1409,7 @@ def render_camera_certificate_video(
                     "absolute_mapping_error_s": float(
                         mapping["absolute_mapping_error_s"]
                     ),
+                    "display_level_q_h_m": display_level_h_m,
                     "visible_overlay_obstacle_ids": sorted(frame_visible),
                     "camera_visible_overlay_obstacle_ids": sorted(
                         frame_camera_visible

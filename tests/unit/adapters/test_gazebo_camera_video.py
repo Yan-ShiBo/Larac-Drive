@@ -65,6 +65,16 @@ def _write_recording(
                         for obstacle_id in ACTIVE_OBSTACLE_IDS
                     },
                     "additional_body_inflation_m": 0.0,
+                    "display_level": {
+                        "symbol": "q_h",
+                        "value_m": 0.30,
+                        "level_set": "h_t(x) = q_h",
+                        "safe_boundary": "h_t(x) = 0",
+                        "semantics": (
+                            "runtime_distance_cbf_level_not_qsbc_probability"
+                        ),
+                        "observer_only": True,
+                    },
                     "absolute_time_error_s": 0.0,
                 },
                 "minimum_barrier_m": 0.20 if index < 3 else 0.05,
@@ -190,6 +200,13 @@ def test_render_camera_certificate_video_verifies_and_renders_active_overlay(
     assert manifest["overlays"][
         "camera_visible_output_frame_count_by_obstacle"
     ] == {obstacle_id: 4 for obstacle_id in ACTIVE_OBSTACLE_IDS}
+    assert manifest["overlays"]["display_level_q_h_m"] == pytest.approx(0.30)
+    assert manifest["overlays"]["preview_contour_semantics"] == (
+        "distance_cbf_h_equals_q_h_not_qsbc_probability"
+    )
+    assert manifest["overlays"]["preview_contour_radius_rule"] == (
+        "certificate_radius_m + additional_body_inflation_m + q_h_m"
+    )
     assert manifest["observer_only"] is True
     assert manifest["source_frame_count"] == 5
     assert manifest["rendered_frame_count"] == 4
@@ -282,6 +299,9 @@ def test_render_camera_certificate_video_verifies_and_renders_active_overlay(
     assert rendered_records[-1]["terminal_status_visible"] is True
     assert rendered_records[-1]["terminal_reason"] == TERMINAL_REASON
     assert rendered_records[-1]["terminal_simulated_time_s"] == 0.4
+    assert {
+        record["display_level_q_h_m"] for record in rendered_records
+    } == {0.30}
 
     launch = " ".join(commands[0])
     assert "multifilesrc" in launch
@@ -309,6 +329,12 @@ def test_render_camera_certificate_video_verifies_and_renders_active_overlay(
         for x in range(32, 1440)
         if first.getpixel((x, y)) == (255, 176, 0)
     ]
+    cyan_preview_pixels = [
+        1
+        for y in range(80, 872)
+        for x in range(32, 1440)
+        if first.getpixel((x, y)) == (67, 199, 217)
+    ]
     red_pixels = [
         1
         for y in range(80, 872)
@@ -317,6 +343,7 @@ def test_render_camera_certificate_video_verifies_and_renders_active_overlay(
     ]
     assert amber_x
     assert min(amber_x) > 500
+    assert cyan_preview_pixels
     assert red_pixels
     final = Image.open(
         output / "dashboard_frames" / "frame_000003.png"

@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import csv
 from dataclasses import dataclass
 from hashlib import sha256
 import json
@@ -63,6 +64,103 @@ def write_trace(
         for row in rows:
             stream.write(_canonical_trace_line(row))
     temporary.replace(path)
+
+
+_TRAJECTORY_FIELDS = (
+    "step_index",
+    "simulated_time_s",
+    "gazebo_sim_time_s",
+    "x_m",
+    "y_m",
+    "heading_rad",
+    "lookahead_x_m",
+    "lookahead_y_m",
+    "target_lane_index",
+    "command_linear_mps",
+    "command_angular_radps",
+    "filtered_u_x_mps",
+    "filtered_u_y_mps",
+    "minimum_barrier_m",
+    "minimum_active_obstacle_barrier_m",
+    "active_obstacle_ids",
+    "world_model_active_obstacle_count",
+    "solve_status",
+    "display_level_q_h_m",
+    "termination_reason",
+)
+
+
+def write_trajectory_csv(
+    path: str | Path,
+    rows: Iterable[Mapping[str, Any]],
+) -> Path:
+    """Export one full-rate, user-readable trajectory from trace rows."""
+
+    destination = Path(path)
+    destination.parent.mkdir(parents=True, exist_ok=True)
+    temporary = destination.with_name(f".{destination.name}.tmp")
+    with temporary.open("w", encoding="utf-8", newline="") as stream:
+        writer = csv.DictWriter(stream, fieldnames=_TRAJECTORY_FIELDS)
+        writer.writeheader()
+        for row in rows:
+            state = row["state"]
+            point = state.get(
+                "lookahead_point_m",
+                [state["x_m"], state["y_m"]],
+            )
+            action = row.get("action") or {}
+            command = action.get("differential_command") or {}
+            filtered = (
+                action.get("filtered_lookahead")
+                or action.get("filtered")
+                or {}
+            )
+            certificate = row["certificate"]
+            display_level = certificate.get("display_level") or {}
+            solve = certificate.get("online_solve") or {}
+            measurement = state.get("gazebo_measurement") or {}
+            world_model = row.get("world_model") or {}
+            planner = row.get("planner") or {}
+            writer.writerow(
+                {
+                    "step_index": row["step_index"],
+                    "simulated_time_s": row["simulated_time_s"],
+                    "gazebo_sim_time_s": measurement.get(
+                        "gazebo_sim_time_s", ""
+                    ),
+                    "x_m": state["x_m"],
+                    "y_m": state["y_m"],
+                    "heading_rad": state.get("heading_rad", ""),
+                    "lookahead_x_m": point[0],
+                    "lookahead_y_m": point[1],
+                    "target_lane_index": planner.get(
+                        "target_lane_index", ""
+                    ),
+                    "command_linear_mps": command.get("linear_mps", ""),
+                    "command_angular_radps": command.get(
+                        "angular_radps", ""
+                    ),
+                    "filtered_u_x_mps": filtered.get("u_x_mps", ""),
+                    "filtered_u_y_mps": filtered.get("u_y_mps", ""),
+                    "minimum_barrier_m": certificate["minimum_barrier_m"],
+                    "minimum_active_obstacle_barrier_m": certificate.get(
+                        "minimum_active_obstacle_barrier_m", ""
+                    ),
+                    "active_obstacle_ids": ";".join(
+                        row["obstacles"]["active_ids"]
+                    ),
+                    "world_model_active_obstacle_count": world_model.get(
+                        "active_obstacle_count", ""
+                    ),
+                    "solve_status": solve.get("status", ""),
+                    "display_level_q_h_m": display_level.get(
+                        "value_m", ""
+                    ),
+                    "termination_reason": row.get("termination_reason") or "",
+                }
+            )
+    temporary.replace(destination)
+    return destination
 
 
 def _canonical_trace_line(row: Mapping[str, Any]) -> str:

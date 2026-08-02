@@ -31,6 +31,15 @@ baseline，并定义对照关系和记录字段。领域参数必须留在各自
   Gazebo capture timestamp 重采样为 `392` 帧、`10 fps`、`39.2 s`，并通过完整
   解码和 O1--O5 可见性检查。410 帧、41.0 秒的中间编码只保留为诊断制品。
   它仍是单 seed 经验结果，不取代 V13 多 seed 与 replay 证据。
+- `dynamic_road_gazebo_classic_v16.yaml`：当前稀疏障碍、提前绕行、全速率轨迹
+  保存和双等值线显示入口。它组合 `dynamic_road_differential_v4.yaml` 与
+  `dynamic_road_sparse_obstacles.yaml`，将随机障碍数量降为 3，在约
+  `4.1--4.3 m` 前揭示障碍，并用 `3.8 m` 路线前视提前换道。控制器每个
+  `0.05 s` 控制步都从 Gazebo 实测位姿重建活动障碍世界模型并进行精确二维
+  action projection；`trajectory.csv` 保存全部控制帧。画面同时显示琥珀色
+  `h=0` 控制边界与青色 `h=q_h` 预览线，其中 `q_h=0.30 m` 是距离 CBF 的米制
+  level set，不是 q-SBC 的概率界。seed `7320014` 单次服务器结果为
+  `provisional_success`，不取代 V13 多 seed 与 replay 证据。
 - `dynamic_road_gazebo_classic_replay_v2.yaml`：要求两个独立 V6 结果通过
   身份、文件哈希、全部单次门禁和有界物理重复性验收；不要求 ODE 轨迹逐字节
   一致。
@@ -54,7 +63,7 @@ baseline，并定义对照关系和记录字段。领域参数必须留在各自
 
 动态道路 exact 配置和 Gazebo 配置属于不同证据层级。前者是显式模型经验结果，
 后者是 Gazebo Classic ODE 物理闭环经验结果；两者都不是 q-SBC 概率证明。
-Gazebo V13、多 seed V4、V14 与 V15 也不是 q-SBC、ROS2 或实车结果。V14/V15 中
+Gazebo V13、多 seed V4、V14、V15 与 V16 也不是 q-SBC、ROS2 或实车结果。V14--V16 中
 参与 action projection 的仍是经验 lifted online distance CBF；相机上的琥珀
-边界只是同一运行时证书的时间对齐几何投影，图像不参与控制。Python、测试和
+边界和 V16 的青色 `h=q_h` 线只是同一运行时证书的时间对齐几何投影，图像不参与控制。Python、测试和
 仿真只在服务器环境运行。

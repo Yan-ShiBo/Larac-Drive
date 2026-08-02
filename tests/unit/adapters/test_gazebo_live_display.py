@@ -276,6 +276,56 @@ def test_live_display_serves_incremental_certificate_frames(
     )
 
 
+def test_live_display_draws_shared_h_equals_q_preview_contour(
+    tmp_path: Path,
+) -> None:
+    display = GazeboLiveDisplay(
+        directory=tmp_path / "live_display",
+        scenario=_scenario(),
+        display_stride=1,
+        port=0,
+    )
+    row = _row(step_index=0, active=True, newly_activated=True)
+    row["certificate"]["display_level"] = {
+        "symbol": "q_h",
+        "value_m": 0.30,
+        "level_set": "h_t(x) = q_h",
+        "safe_boundary": "h_t(x) = 0",
+        "semantics": "runtime_distance_cbf_level_not_qsbc_probability",
+        "observer_only": True,
+    }
+    url = display.start()
+    try:
+        display.publish(row)
+        with urlopen(f"{url}snapshot.json", timeout=2.0) as response:
+            snapshot = json.loads(response.read())
+        with urlopen(url, timeout=2.0) as response:
+            viewer = response.read().decode("utf-8")
+    finally:
+        display.close()
+
+    obstacle = snapshot["scenario"]["obstacles"][0]
+    expected_safety_radius = (
+        _scenario().obstacles[0].certificate_radius_m + 0.15
+    )
+    assert obstacle["safety_boundary_radius_m"] == pytest.approx(
+        expected_safety_radius
+    )
+    assert obstacle["display_level_q_h_m"] == pytest.approx(0.30)
+    assert obstacle["contour_radius_m"] == pytest.approx(
+        expected_safety_radius + 0.30
+    )
+    assert obstacle["contour_semantics"] == "distance_cbf_h_equals_q_h"
+    assert snapshot["frame"]["certificate"]["display_level"] == row[
+        "certificate"
+    ]["display_level"]
+    assert "h = q_h" in viewer
+    manifest = display.manifest_payload()
+    assert manifest["semantics"]["preview_level_set"] == (
+        "distance_cbf_h_equals_q_h_not_qsbc_probability"
+    )
+
+
 def test_v14_live_display_copies_camera_without_control_feedback(
     tmp_path: Path,
 ) -> None:
@@ -392,6 +442,14 @@ def test_v15_records_unique_camera_frames_before_display_stride(
                     newly_activated=step_index == 0,
                 )
             )
+        incomplete = camera_queue / "frame_000000004.bmp.tmp"
+        incomplete.write_bytes(b"incomplete camera writer buffer")
+        unrelated_temporary = camera_queue / "observer_notes.tmp"
+        unrelated_temporary.write_bytes(b"must not be removed by writer cleanup")
+        assert display.discard_incomplete_camera_writer_buffers() == 1
+        assert not incomplete.exists()
+        assert unrelated_temporary.is_file()
+        unrelated_temporary.unlink()
     finally:
         display.close()
 
@@ -409,6 +467,10 @@ def test_v15_records_unique_camera_frames_before_display_stride(
     assert payload["camera_queue_consumed_frame_count"] == 3
     assert payload["camera_queue_remaining_frame_count"] == 0
     assert payload["camera_queue_temporary_file_count"] == 0
+    assert payload["camera_queue_discarded_temporary_file_count"] == 1
+    assert payload["gates"][
+        "camera_queue_discarded_temporary_file_count_bounded"
+    ] is True
     assert all(payload["gates"].values())
     assert not list(camera_queue.iterdir())
     records = [

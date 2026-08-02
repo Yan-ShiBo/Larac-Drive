@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import csv
 from math import hypot
 import json
 from pathlib import Path
@@ -19,7 +20,11 @@ from cbf_rover.adapters.exact.differential_road import (
 from cbf_rover.adapters.exact.differential_road_render import (
     render_differential_road_animation,
 )
-from cbf_rover.adapters.exact.dynamic_road import LaneSupervisor, write_trace
+from cbf_rover.adapters.exact.dynamic_road import (
+    LaneSupervisor,
+    write_trace,
+    write_trajectory_csv,
+)
 from cbf_rover.adapters.exact.road_contract import (
     canonical_content_sha256,
     file_sha256,
@@ -30,7 +35,7 @@ from cbf_rover.domain.differential_drive import (
     DifferentialDriveState,
     wrap_heading,
 )
-from cbf_rover.domain.dynamic_road import DynamicRoadScenario
+from cbf_rover.domain.dynamic_road import DynamicRoadScenario, RoadObstacle
 from cbf_rover.methods.online_cbf import (
     InfeasibleProjectionError,
     filter_dynamic_road_action,
@@ -142,6 +147,82 @@ def _write_startup_attempts(
     return path
 
 
+def _archive_failed_startup_camera_residue(
+    *,
+    destination: Path,
+    attempt_log_directory: Path,
+    camera_source_path: Path | None,
+    camera_queue_directory: Path | None,
+) -> dict[str, Any]:
+    """Isolate exact camera outputs left by a failed pre-control attempt."""
+
+    candidates: list[tuple[Path, str]] = []
+    if camera_source_path is not None:
+        candidates.extend(
+            (
+                (camera_source_path, "latest"),
+                (
+                    camera_source_path.with_name(
+                        f"{camera_source_path.name}.tmp"
+                    ),
+                    "latest",
+                ),
+            )
+        )
+    if camera_queue_directory is not None:
+        candidates.extend(
+            (path, "queue")
+            for pattern in ("frame_*.bmp", "frame_*.bmp.tmp")
+            for path in sorted(camera_queue_directory.glob(pattern))
+        )
+
+    archive_root = attempt_log_directory / "camera_startup_residue"
+    records: list[dict[str, Any]] = []
+    for source_path, source_kind in candidates:
+        if not source_path.exists():
+            continue
+        if not source_path.is_file():
+            raise RuntimeError(
+                "failed-attempt camera residue is not a regular file: "
+                f"{source_path}"
+            )
+        try:
+            source_relative = source_path.relative_to(destination)
+        except ValueError as error:
+            raise RuntimeError(
+                "failed-attempt camera residue is outside the run directory: "
+                f"{source_path}"
+            ) from error
+        archive_path = archive_root / source_kind / source_path.name
+        if archive_path.exists():
+            raise FileExistsError(archive_path)
+        archive_path.parent.mkdir(parents=True, exist_ok=True)
+        expected_sha256 = file_sha256(source_path)
+        size_bytes = source_path.stat().st_size
+        source_path.replace(archive_path)
+        if file_sha256(archive_path) != expected_sha256:
+            raise RuntimeError(
+                "failed-attempt camera residue hash changed during archive"
+            )
+        records.append(
+            {
+                "source_file": str(source_relative),
+                "archive_file": str(archive_path.relative_to(destination)),
+                "file_sha256": expected_sha256,
+                "size_bytes": size_bytes,
+                "temporary": source_path.name.endswith(".tmp"),
+            }
+        )
+    return {
+        "policy": "archive_exact_failed_attempt_camera_outputs_before_retry",
+        "archived_file_count": len(records),
+        "archived_temporary_file_count": sum(
+            bool(record["temporary"]) for record in records
+        ),
+        "files": records,
+    }
+
+
 def _start_gazebo_session_with_attempts(
     *,
     contract: GazeboDifferentialRoadContract,
@@ -149,6 +230,8 @@ def _start_gazebo_session_with_attempts(
     bridge_path: Path,
     destination: Path,
     gzserver_binary: str,
+    camera_source_path: Path | None = None,
+    camera_queue_directory: Path | None = None,
 ) -> tuple[GazeboClassicSession, list[dict[str, Any]]]:
     records: list[dict[str, Any]] = []
     for attempt_index in range(1, contract.runtime.startup_attempt_limit + 1):
@@ -167,6 +250,12 @@ def _start_gazebo_session_with_attempts(
             initial_state = session.start()
         except BaseException as error:
             session.close()
+            camera_residue = _archive_failed_startup_camera_residue(
+                destination=destination,
+                attempt_log_directory=destination / log_directory,
+                camera_source_path=camera_source_path,
+                camera_queue_directory=camera_queue_directory,
+            )
             record = {
                 "attempt": attempt_index,
                 "status": "failed_before_initial_state",
@@ -175,6 +264,7 @@ def _start_gazebo_session_with_attempts(
                 "error_type": type(error).__name__,
                 "error_message": str(error),
                 "control_frames_started": False,
+                "camera_residue": camera_residue,
             }
             records.append(record)
             _write_startup_attempts(
@@ -269,6 +359,7 @@ def _patch_gazebo_frame(
     row: dict[str, Any],
     *,
     contract: GazeboDifferentialRoadContract,
+    active_obstacles: tuple[RoadObstacle, ...],
     current_measurement: GazeboClassicState,
     episode_start_time_s: float,
     episode_start_iterations: int,
@@ -285,6 +376,75 @@ def _patch_gazebo_frame(
         episode_start_time_s=episode_start_time_s,
         episode_start_iterations=episode_start_iterations,
     )
+    active_obstacle_ids = list(row["obstacles"]["active_ids"])
+    display_spec = contract.live_display
+    preview_level_h_m = (
+        0.0 if display_spec is None else display_spec.preview_level_h_m
+    )
+    body_inflation_m = contract.base.additional_body_inflation_m
+    row["world_model"] = {
+        "model_id": "GZ_LOCAL_ACTIVE_OBSTACLE_WORLD_MODEL_V1",
+        "update_index": int(row["step_index"]),
+        "gazebo_sim_time_s": current_measurement.sim_time_s,
+        "pose_source": "timestamp_aligned_measured_gazebo_pose",
+        "obstacle_source": "seeded_map_revealed_by_measured_pose",
+        "active_obstacle_ids": active_obstacle_ids,
+        "active_obstacle_count": len(active_obstacle_ids),
+        "obstacles": [
+            {
+                "obstacle_id": obstacle.obstacle_id,
+                "center_m": list(obstacle.center.as_tuple()),
+                "lane_index": obstacle.lane_index,
+                "physical_radius_m": obstacle.physical_radius_m,
+                "certificate_radius_m": obstacle.certificate_radius_m,
+                "additional_body_inflation_m": body_inflation_m,
+                "safety_boundary_radius_m": (
+                    obstacle.certificate_radius_m + body_inflation_m
+                ),
+                "display_level_q_h_m": preview_level_h_m,
+                "display_contour_radius_m": (
+                    obstacle.certificate_radius_m
+                    + body_inflation_m
+                    + preview_level_h_m
+                ),
+            }
+            for obstacle in active_obstacles
+        ],
+        "inactive_obstacles_available_to_controller": False,
+        "rebuilt_from_measured_pose_each_step": True,
+    }
+    obstacle_constraint_count = sum(
+        fact["barrier_kind"] == "obstacle"
+        for fact in row["certificate"]["constraints"]
+    )
+    row["certificate"]["online_solve"] = {
+        "step_index": int(row["step_index"]),
+        "world_model_update_index": int(row["step_index"]),
+        "solver": "exact_2d_projection_onto_halfspaces_intersect_l2_disk",
+        "status": (
+            "feasible_exact_projection"
+            if row["action"] is not None
+            else (
+                "infeasible_projection"
+                if row["termination_reason"] == "cbf_action_set_infeasible"
+                else "terminal_state_no_action"
+            )
+        ),
+        "active_obstacle_constraint_count": obstacle_constraint_count,
+        "uses_timestamp_aligned_measured_pose": True,
+        "post_solve_clipping_applied": False,
+    }
+    if display_spec is not None and display_spec.preview_level_h_m > 0.0:
+        row["certificate"]["display_level"] = {
+            "symbol": "q_h",
+            "value_m": display_spec.preview_level_h_m,
+            "level_set": "h_t(x) = q_h",
+            "safe_boundary": "h_t(x) = 0",
+            "semantics": (
+                "runtime_distance_cbf_level_not_qsbc_probability"
+            ),
+            "observer_only": True,
+        }
     row["runtime"] = {
         "backend": "Gazebo_Classic_11_ODE_paused_fixed_step",
         "certificate_mode": "measured_state_lifted_online_action_filter",
@@ -436,6 +596,7 @@ def run_gazebo_differential_road_episode(
             row = _patch_gazebo_frame(
                 row,
                 contract=contract,
+                active_obstacles=active_obstacles,
                 current_measurement=current_measurement,
                 episode_start_time_s=episode_start_time_s,
                 episode_start_iterations=episode_start_iterations,
@@ -494,6 +655,7 @@ def run_gazebo_differential_road_episode(
         row = _patch_gazebo_frame(
             row,
             contract=contract,
+            active_obstacles=active_obstacles,
             current_measurement=current_measurement,
             episode_start_time_s=episode_start_time_s,
             episode_start_iterations=episode_start_iterations,
@@ -567,6 +729,7 @@ def run_gazebo_differential_road_episode(
         row = _patch_gazebo_frame(
             row,
             contract=contract,
+            active_obstacles=active_obstacles,
             current_measurement=current_measurement,
             episode_start_time_s=episode_start_time_s,
             episode_start_iterations=episode_start_iterations,
@@ -1056,6 +1219,37 @@ def _apply_camera_recording_video_acceptance(
     return result
 
 
+def _trajectory_telemetry(
+    *,
+    trajectory_path: Path,
+    trace_path: Path,
+    rows: list[dict[str, Any]],
+) -> dict[str, Any]:
+    """Bind the full-rate trajectory file to its run-manifest fields."""
+
+    if not trajectory_path.is_file():
+        raise FileNotFoundError(trajectory_path)
+    with trajectory_path.open(encoding="utf-8", newline="") as stream:
+        reader = csv.reader(stream)
+        try:
+            next(reader)
+        except StopIteration as error:
+            raise ValueError("trajectory CSV is missing its header") from error
+        sample_count = sum(1 for _ in reader)
+    if sample_count != len(rows):
+        raise ValueError(
+            "trajectory CSV sample count does not match the live trace: "
+            f"{sample_count} != {len(rows)}"
+        )
+    return {
+        "trajectory_file": trajectory_path.name,
+        "trajectory_file_sha256": file_sha256(trajectory_path),
+        "trajectory_format": "csv_full_rate_every_control_frame",
+        "trajectory_sample_count": sample_count,
+        "trajectory_source": trace_path.name,
+    }
+
+
 def simulate_gazebo_differential_road_cbf(
     *,
     contract: GazeboDifferentialRoadContract,
@@ -1171,6 +1365,8 @@ def simulate_gazebo_differential_road_cbf(
         bridge_path=bridge_path,
         destination=destination,
         gzserver_binary=gzserver_binary,
+        camera_source_path=camera_source_path,
+        camera_queue_directory=camera_queue_directory,
     )
     live_publisher: GazeboLiveDisplay | None = None
     live_display_manifest_path: Path | None = None
@@ -1221,6 +1417,7 @@ def simulate_gazebo_differential_road_cbf(
         session.close()
         if live_publisher is not None:
             live_publisher.drain_camera_frames()
+            live_publisher.discard_incomplete_camera_writer_buffers()
         if camera_source_path is not None:
             camera_writer_temp_removed_after_shutdown = (
                 _remove_camera_writer_temporary_file(
@@ -1242,6 +1439,15 @@ def simulate_gazebo_differential_road_cbf(
     trace_path = destination / "live_trace.jsonl"
     write_trace(trace_path, rows)
     trace_sha = file_sha256(trace_path)
+    trajectory_path = write_trajectory_csv(
+        destination / "trajectory.csv",
+        rows,
+    )
+    trajectory_telemetry = _trajectory_telemetry(
+        trajectory_path=trajectory_path,
+        trace_path=trace_path,
+        rows=rows,
+    )
     metrics = gazebo_differential_road_metrics(rows)
     acceptance = _gazebo_acceptance(
         rows=rows,
@@ -1474,6 +1680,7 @@ def simulate_gazebo_differential_road_cbf(
         "telemetry": {
             "trace_file": trace_path.name,
             "trace_file_sha256": trace_sha,
+            **trajectory_telemetry,
             **metrics,
         },
         "acceptance": acceptance,

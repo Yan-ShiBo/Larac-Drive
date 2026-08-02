@@ -49,6 +49,7 @@
 - [2026-07-31 Gazebo V13 全车道模式验证、replay 与证书渲染](experiments/DYNAMIC_ROAD_GAZEBO_MULTISEED_V13_RUN_2026-07-31.md)
 - [2026-08-01 Gazebo V14 室内房间、前视相机与时间对齐证书显示](experiments/INDOOR_ROOM_CAMERA_CERTIFICATE_V14_RUN_2026-08-01.md)
 - [2026-08-01 Gazebo V15 连续前视相机录制与障碍证书演示](experiments/INDOOR_ROOM_CAMERA_CERTIFICATE_VIDEO_V15_RUN_2026-08-01.md)
+- [2026-08-01 Gazebo V16 稀疏障碍、实时世界模型、轨迹与 h=q_h 演示](experiments/INDOOR_SPARSE_REALTIME_CERTIFICATE_Q_LEVEL_V16_RUN_2026-08-01.md)
 
 ## 来源与制品
 
