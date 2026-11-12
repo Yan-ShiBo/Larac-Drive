@@ -1,15 +1,17 @@
-# CBF-Rover 架构
+# Larac-Drive 架构
 
-## 研究目标
+## 车辆控制与验证的目标架构
 
-CBF-Rover 的核心对象是系统、控制器、障碍证书、求解证据及运行时评估，而不是
-某个传感器网络或 ROS 节点。架构首先支持纯 Python 数学闭环，再通过适配器接入
-exact simulator 和 Gazebo。learned RGB-D 是可选经验基线，不是默认研究主线。
+Larac-Drive 计划采用两条相互衔接的控制路径。
 
-当前重构建立了层次与契约，但没有声称首个 q-SBC 公式已经确认、证书已经求解或
-端到端仿真已经运行。
+- **道路闭环控制。** Frenet 无侧滑模型以纵向加速度和车辆曲率为控制输入。SAC 给出名义动作，含控制平滑代价的 QP 根据纵向安全时距的鲁棒 CBF 和横向道路边界的 HOCBF 修正动作。低速及 QP 不可行时进入紧急制动。正常跟驰、前车急刹、邻车切入三类工况用于和 IDM、MPC 对比，测量跟踪误差、约束违约率、控制变化和推理及求解耗时。
+- **同车道随机制动下的纵向应急控制。** 离线用多项式近似应急策略并评估 PAC 近似误差，在三维纵向闭环上以 SOS/SDP 求解 SBC，依期望下降条件优化控制器系数。在线只在证书覆盖的状态域内使用验证后的多项式控制器。以 Monte Carlo 估计及置信区间与证书下界对照，评估其保守程度。
 
-## 五层目录
+具体研究范围、技术路线和预期结果见[项目方向](../PROJECT_DIRECTION.md)。
+
+## 已有代码的五层结构
+
+以下目录和接口来自 CBF-Rover 阶段，描述已有的二维数学模型、差速车仿真、证书求解与验证工具。原有实现沿用 `cbf_rover` 包名。
 
 ```text
 src/cbf_rover/
@@ -23,7 +25,7 @@ src/cbf_rover/
 │   └── claims.py                 # 显式证据标签
 ├── methods/
 │   ├── controllers/              # controller 实现
-│   ├── polynomial_sbc/           # q-SBC 实现门禁
+│   ├── polynomial_sbc/           # 多项式控制器、证书求解与验证
 │   └── baselines/learned_rgbd/   # learned 推理与经验 modifier
 ├── application/
 │   ├── episode.py                # 生命周期
@@ -37,10 +39,7 @@ src/cbf_rover/
 └── entrypoints/cli/              # 参数解析和应用调用
 ```
 
-`methods/polynomial_sbc/` 当前只保存 q-SBC 实现门禁说明，不导出求解器、
-evaluator 或形式化声明。研究契约确认后，具体 polynomial q-SBC、exact
-environment 或 Gazebo state adapter 应放入已有职责层，不再为预期功能创建
-额外空包。
+`methods/polynomial_sbc/` 包含多项式策略拟合、SOS 建模和独立证书验证方法。G7 W14 已在原二维模型上通过独立验证，其适用条件与数值下界见[二维 M1 实验记录](../experiments/EXACT_LIVE_CERTIFICATE_RUN_2026-07-30.md)。
 
 ## 依赖规则
 
@@ -185,7 +184,7 @@ experiment 分域。证书制品与 learned 模型制品分开：
 `verified` 模型不等于安全。合法 certificate artifact 也只有在运行配置完全
 匹配且假设成立时才有对应声明资格。
 
-## 当前验证边界
+## CBF-Rover 阶段的验证记录
 
 本轮没有在本机运行 pytest、包导入、模型加载、训练、ROS2、Colcon 或 Gazebo。
 目录和静态契约存在不代表运行通过。服务器验收见

@@ -1,4 +1,23 @@
-# CBF-Rover
+# Larac-Drive
+
+**随机扰动下车辆强化学习控制与可达—规避概率验证系统｜独立开发｜2025.03 - 至今**
+
+面向结构化道路中的自适应跟驰、前车急刹与邻车切入，Larac-Drive 研究如何在前车制动不确定、车辆运动受限时兼顾跟踪精度、安全时距、道路边界与控制平顺性。
+
+| 研究任务 | 计划与验收目标 |
+| --- | --- |
+| 横纵向控制 | 在无侧滑假设下建立 Frenet 车辆运动学模型，让 SAC 输出纵向加速度和车辆曲率，在奖励中惩罚跟踪误差与控制变化率。用同一组闭环场景对比 SAC、IDM 和 MPC。 |
+| 在线安全约束 | 用鲁棒 CBF 约束纵向安全时距，用 HOCBF 约束横向道路边界，通过含控制平滑代价的 QP 修正控制指令。为低速和 QP 不可行工况设计紧急制动，比较约束违约率和控制波动，并分别测量策略单步推理与 QP 求解耗时。 |
+| 纵向应急概率验证 | 针对同车道前车随机制动的三维纵向子系统，用具有 PAC 统计误差保证的多项式近似应急策略，以 SOS/SDP 求解随机障碍证书（SBC）。按证书的期望下降条件优化控制器系数，争取提高可达—规避概率下界，在指定状态域内使用验证后的控制器，并用 Monte Carlo 估计及置信区间量化证书的保守程度。 |
+
+以上为项目后续路线。三类道路工况均参与闭环仿真评估，形式概率下界的验证范围限于同车道前车随机制动时的纵向应急子系统。[完整项目方向与验收目标](docs/PROJECT_DIRECTION.md) · [架构总览](docs/architecture/OVERVIEW.md) · [文档索引](docs/README.md)
+
+## 前期研究基础
+
+项目原名 CBF-Rover。已有工作包括二维模型上的 SAC 训练、差速车道路避障的 Gazebo 仿真，以及固定二维模型上经独立验证的 G7 W14 证书。下列记录保留了各项结果对应的模型、配置与适用范围。[SAC 训练](docs/experiments/ROVER_FIRST_SERVER_RUN_2026-07-30.md) · [差速车仿真](docs/experiments/DYNAMIC_ROAD_GAZEBO_MULTISEED_V13_RUN_2026-07-31.md) · [二维模型证书](docs/experiments/EXACT_LIVE_CERTIFICATE_RUN_2026-07-30.md)
+
+<details>
+<summary>展开 CBF-Rover 阶段的实验入口、运行命令与架构记录</summary>
 
 ## Dynamic road live CBF
 
@@ -48,7 +67,7 @@ and the exact replay gate.
 
 ### Differential-drive lifted online CBF
 
-The current rover-facing exact path extends the planar action filter to the
+The rover-facing exact path extends the planar action filter to the
 differential-drive state `[x, y, theta]` and command `[v, omega]`. A
 `0.15 m` lookahead point is protected by the same road and obstacle CBFs, while
 the heading-dependent reachable set, `0 <= v <= 0.5 m/s`, and
@@ -219,7 +238,7 @@ visible, full GStreamer and OpenCV decoding pass, and the final frame displays
 `COMPLETED / goal_reached`. The earlier 410-frame, 41.0-second callback-count
 encoding remains diagnostic evidence and is not the final 1x artifact.
 
-V16 is the current single-run demonstration entry point. It reduces the road
+V16 provides the single-run demonstration described here. It reduces the road
 to three obstacles, reveals each obstacle about `4.1--4.3 m` ahead, begins the
 lane change with a `3.8 m` nominal lookahead, and rebuilds the active-obstacle
 world model from the measured Gazebo pose on every `0.05 s` control step. The
@@ -271,15 +290,15 @@ runtime certificate display. See the
 > 证据见
 > [`C2_QSBC_SERVER_RUN_2026-07-30.md`](docs/experiments/C2_QSBC_SERVER_RUN_2026-07-30.md)。
 
-CBF-Rover 是一个以障碍证书为研究对象、以仿真为验证环境的 math-first 工程。
-主线是“数学系统与证书 → 应用编排 → exact 仿真 → ROS2/Gazebo 投影”；learned
+CBF-Rover 阶段以障碍证书为研究对象、以仿真为验证环境。
+当时的主线是“数学系统与证书 → 应用编排 → exact 仿真 → ROS2/Gazebo 投影”；learned
 RGB-D 只保留为默认禁用的经验基线。项目没有实车，也不包含硬件驱动主线。
 
-> [`接手的原始文件/`](接手的原始文件/) 永久只读，只保存接手时的三份压缩包。
+> 本地目录 `接手的原始文件/` 永久只读，只保存接手时的三份压缩包。
 > 不得在其中解压、新增、删除、重命名或修改任何内容。所有开发、制品、数据和
 > 运行结果都必须位于该目录之外。
 
-## 当前事实
+## CBF-Rover 阶段的实现与实验
 
 - 已建立重构前基线：commit `1e5a8d8`、tag `pre-math-first-refactor`。
 - Python 代码按 `domain → methods → application/adapters → entrypoints` 重组。
@@ -291,8 +310,7 @@ RGB-D 只保留为默认禁用的经验基线。项目没有实车，也不包�
 - [`RESEARCH_CONTRACT.md`](docs/mathematics/RESEARCH_CONTRACT.md) 已按推荐项
   统一授权冻结，并由
   [`C2_PIECEWISE_CONTROLLER_CONTRACT.md`](docs/mathematics/C2_PIECEWISE_CONTROLLER_CONTRACT.md)
-  固定 PB1 失败后的活动 controller 路线；C2 controller 已验证，但当前仍没有
-  通过独立验证的 q-SBC artifact。
+  固定 PB1 失败后的 C2 controller 路线。C2 已通过验证。G5 综合返回 Unknown，后续 G7 W14 在该二维模型上通过独立证书验证。
 - Gazebo V13 源码已在服务器通过 Ruff、114 个快速测试、3 个
   MOSEK/SOS 慢测试以及 2 个 bridge 集成回归；差速多种子 discovery
   `256/256`、held-out validation
@@ -317,13 +335,14 @@ RGB-D 只保留为默认禁用的经验基线。项目没有实车，也不包�
 在 exact 模型和 Gazebo Classic 物理闭环中的状态分别是
 `empirically_accepted_exact_model` 与
 `empirically_accepted_gazebo_classic`。固定几何 controller 状态是
-`validated`，q-SBC 证书状态仍是 `not_ready_at_qSBC_stage1_unknown`。不能把
+`validated`。G5 的阶段状态为 `not_ready_at_qSBC_stage1_unknown`，后续 G7 W14
+的状态为 `formal_valid_not_ready`。不能把
 C2V1、在线 CBF、Gazebo 或 rollout 成功扩大解释为 reach-avoid 概率证明。
 
 ## 目录
 
 ```text
-CBF-Rover/
+Larac-Drive/
 ├── src/cbf_rover/
 │   ├── domain/                     # 纯数学/领域类型与端口
 │   ├── methods/
@@ -421,7 +440,7 @@ configs + artifacts ──> composition boundary
 `runs/`，并令 `CBF_ROVER_RUN_ROOT` 指向该目录。远程服务器可使用独立的临时运行根，
 但需要把正式交付物同步回本项目的 `runs/`。模型身份与加载验证不等于控制安全证明。
 
-## 研究顺序
+## CBF-Rover 阶段的研究顺序
 
 1. 保留已冻结的 ST1/V1/PB1、DX1 和所有失败诊断证据，不重训或复用失败系数。
 2. 使用已通过 C2V1 分段闭包门禁和 1000 条 rollout 的冻结 C2。
@@ -440,7 +459,7 @@ configs + artifacts ──> composition boundary
 exact 仿真用于检查实现和实验行为，本身不会产生形式证明。差速车 Gazebo 结果
 若没有经过证明的跟踪误差界，只能作为经验或诊断证据。
 
-## 阅读顺序
+## CBF-Rover 阶段的文档
 
 1. [架构与依赖方向](docs/architecture/OVERVIEW.md)
 2. [首个 Rover-first q-SBC 正式研究合同](docs/mathematics/RESEARCH_CONTRACT.md)
@@ -455,3 +474,5 @@ exact 仿真用于检查实现和实验行为，本身不会产生形式证明�
 任何静态文件存在、模型成功加载、测试通过、ROS2 构建成功或仿真冒烟，都只能
 支持其实际覆盖的结论。声明等级必须由数学假设、兼容哈希、求解证据和独立验证
 共同决定。
+
+</details>

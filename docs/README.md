@@ -1,11 +1,13 @@
-# 文档索引
+# Larac-Drive 文档索引
+
+项目面向正常跟驰、前车急刹和邻车切入三类工况。横纵向学习控制和在线安全约束通过闭环仿真与基线对比评价。概率验证聚焦同车道前车随机制动下的三维纵向应急子系统。[项目方向、技术路线与验收目标](PROJECT_DIRECTION.md)
 
 ## 架构
 
-- [五层架构、依赖方向与 ROS2 边界](architecture/OVERVIEW.md)
+- [车辆控制与概率验证的目标架构、已有五层代码结构](architecture/OVERVIEW.md)
 - [ADR-0001：采用 math-first 五层架构](adr/0001-math-first-five-layer-architecture.md)
 
-## 数学与声明
+## CBF-Rover 阶段的数学合同与声明
 
 - [首个 Rover-first q-SBC 正式研究合同](mathematics/RESEARCH_CONTRACT.md)
 - [C2 分段多项式 controller 合同](mathematics/C2_PIECEWISE_CONTROLLER_CONTRACT.md)
@@ -31,7 +33,7 @@
 - [证据等级、运行评估与声明边界](mathematics/CLAIM_LEVELS.md)
 - [证书制品 schema](../artifacts/certificates/schema.yaml)
 
-## 基线与实验
+## CBF-Rover 阶段的基线与实验
 
 - [learned RGB-D 经验基线](baselines/LEARNED_RGBD.md)
 - [实验协议与 ScenarioSpec](experiments/PROTOCOL.md)
